@@ -5,16 +5,21 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 typedef struct
 {
     int bits[4];
 } s21_decimal;
 
+typedef struct {
+    char bits[4][32];
+} s21_char_decimal;
+
 #define MAX_DEC = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x0};
 #define MIN_DEC = {0x1, 0x0, 0x0, 0x1C0000};
 
-char *s21_dec_desc_to_char(s21_decimal value);
+s21_char_decimal s21_dec_desc_to_char(s21_decimal value);
 void s21_dec_assignment(s21_decimal value, s21_decimal *result);
 void s21_abs(s21_decimal value, s21_decimal *result);
 
