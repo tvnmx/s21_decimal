@@ -1,9 +1,9 @@
 #include "s21_decimal.h"
 
 char *s21_dec_desc_to_char(s21_decimal value) {
-    char result[32] = {};
+    char result[32] = {0};
     int desc = value.bits[3];
-    int i = 31;
+    int i = 32;
     while (desc > 0) {
         result[i] = (desc % 10) + '0';
         desc /= 10;
@@ -21,7 +21,9 @@ void s21_dec_assignment(s21_decimal value, s21_decimal *result) {
 
 void s21_abs(s21_decimal value, s21_decimal *result) {
     s21_dec_assignment(value, result);
-    result->bits[3]++;
+    if (result->bits[3] % 10 == 1) {
+        result->bits[3]--;
+    }
 }
 
 int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
@@ -61,19 +63,18 @@ int s21_is_greater_or_equal(s21_decimal a, s21_decimal b) {
 int s21_is_equal(s21_decimal a, s21_decimal b) {
     if ((a.bits[0] == b.bits[0] && a.bits[1] == b.bits[1] && a.bits[2] == b.bits[2] && a.bits[3] == b.bits[3])
     || (a.bits[0] == 0 && b.bits[0] == 0 && a.bits[1] == 0 && b.bits[1] == 0 && a.bits[2] == 0 && b.bits[2] == 0
-    && )) {  // TODO
+    && (a.bits[3] == 0 || a.bits[3] == 1) && (b.bits[3] == 0 || b.bits[3] == 1))) {
         return 1;
     } else {
         return 0;
     }
-
 }
 
 int s21_is_not_equal(s21_decimal a, s21_decimal b) {
     return !s21_is_equal(a, b);
 }
 
-int s21_from_int_to_decimal (int sc, s21_decimal *dst);
+int s21_from_int_to_decimal(int sc, s21_decimal *dst);
 int s21_from_float_to_decimal(float src, s21_decimal *dst);
 int s21_from_decimal_to_int(s21_decimal src, int *dst);
 int s21_from_decimal_to_float(s21_decimal src, float *dst);
