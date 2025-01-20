@@ -9,18 +9,32 @@
 
 typedef struct
 {
-    int bits[4];
+    uint32_t bits[4];
 } s21_decimal;
 
-typedef struct {
-    char bits[4][32];
-} s21_char_decimal;
+typedef union decimal_bit3 {
+    uint32_t i;
+    struct {
+        uint32_t empty2 : 16;
+        uint32_t power : 8;
+        uint32_t empty1 : 7;
+        uint32_t sign : 1;
+    } parts;
+} decimal_bit3;
 
-#define MAX_DEC = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x0};
-#define MIN_DEC = {0x1, 0x0, 0x0, 0x1C0000};
+//typedef struct {
+//    char bits[4][32];
+//} s21_char_decimal;
 
-s21_char_decimal s21_dec_desc_to_char(s21_decimal value);
-void s21_dec_assignment(s21_decimal value, s21_decimal *result);
+#define MAX_DEC {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x0};
+#define MIN_DEC {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x80000000};
+
+
+s21_decimal s21_remove_trailing_zeros(s21_decimal value);
+//s21_char_decimal s21_dec_to_char(s21_decimal value);
+void s21_print_decimal(s21_decimal dec);
+//char *s21_dec_desc_to_char(s21_decimal value);
+//void s21_dec_assignment(s21_decimal value, s21_decimal *result);
 void s21_abs(s21_decimal value, s21_decimal *result);
 
 int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result);
@@ -44,5 +58,5 @@ int s21_floor(s21_decimal value, s21_decimal *result);
 int s21_round(s21_decimal value, s21_decimal *result);
 int s21_truncate(s21_decimal value, s21_decimal *result);
 int s21_negate(s21_decimal value, s21_decimal *result);
-
 #endif
+
