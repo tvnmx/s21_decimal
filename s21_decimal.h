@@ -22,19 +22,16 @@ typedef union decimal_bit3 {
     } parts;
 } decimal_bit3;
 
-//typedef struct {
-//    char bits[4][32];
-//} s21_char_decimal;
-
 #define MAX_DEC {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x0};
 #define MIN_DEC {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x80000000};
 
+s21_decimal s21_int128_binary_division(s21_decimal decimal1, s21_decimal decimal2, s21_decimal *ost);
+s21_decimal s21_int128_get_ten_pow(int pow);
 
-s21_decimal s21_remove_trailing_zeros(s21_decimal value);
-//s21_char_decimal s21_dec_to_char(s21_decimal value);
+void s21_decimal_zero(s21_decimal *dst);
+void s21_set_sign(s21_decimal *dst, int sign);
+s21_decimal s21_trim_trailing_zeros(s21_decimal value);
 void s21_print_decimal(s21_decimal dec);
-//char *s21_dec_desc_to_char(s21_decimal value);
-//void s21_dec_assignment(s21_decimal value, s21_decimal *result);
 void s21_abs(s21_decimal value, s21_decimal *result);
 
 int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result);
