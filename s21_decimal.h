@@ -17,7 +17,7 @@ typedef union decimal_bit3 {
     uint32_t i;
     struct {
         uint32_t empty2 : 16;
-        uint32_t power : 8;
+        uint32_t scale : 8;
         uint32_t empty1 : 7;
         uint32_t sign : 1;
     } parts;

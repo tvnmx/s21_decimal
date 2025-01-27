@@ -1,5 +1,16 @@
 #include "helpers.h"
 
+uint32_t get_sign(s21_decimal value) {
+    decimal_bit3 db3;
+    db3.i = value.bits[3];
+    return db3.parts.sign;
+}
+
+uint32_t get_scale(s21_decimal value) {
+    decimal_bit3 db3;
+    db3.i = value.bits[3];
+    return db3.parts.scale;
+}
 
 int s21_multiply_by_10(s21_decimal *value) {
     uint64_t carry = 0;
@@ -55,7 +66,7 @@ int s21_is_valid_decimal(s21_decimal value) {
     bool result = true;
     decimal_bit3 db3;
     db3.i = value.bits[3];
-    if (db3.parts.empty2 != 0 || db3.parts.empty1 != 0 || db3.parts.power > 28 || db3.parts.sign > 1) {
+    if (db3.parts.empty2 != 0 || db3.parts.empty1 != 0 || db3.parts.scale > 28 || db3.parts.sign > 1) {
         result = false;
     }
     return result;
@@ -74,7 +85,7 @@ s21_decimal s21_trim_trailing_zeros(s21_decimal value) {
     s21_decimal result = value;
     decimal_bit3 db3;
     db3.i = value.bits[3];
-    uint32_t power = db3.parts.power;
+    uint32_t power = db3.parts.scale;
     if (power > 0 && s21_is_valid_decimal(value)) {
         s21_decimal ost = { .bits = {0, 0, 0, 0}};
         s21_decimal tmp = value;

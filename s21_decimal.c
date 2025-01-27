@@ -42,6 +42,27 @@ int s21_sub(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
 
 int s21_mul(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
     int res = 0;
+
+    uint32_t sign1 = get_sign(value_1);
+    uint32_t sign2 = get_sign(value_2);
+
+    uint32_t scale1 = get_scale(value_1);
+    uint32_t scale2 = get_scale(value_2);
+
+    if (scale1 + scale2 <= 28) {
+        db3r.parts.scale = db31.parts.scale + db32.parts.scale;
+    } else {
+        db3r.parts.scale = 28;
+    }
+
+    if (db31.parts.sign == db32.parts.sign) {
+        db3r.parts.sign = 0;
+    } else {
+        db3r.parts.sign = 1;
+    }
+
+
+
     return res;
 }
 
@@ -49,7 +70,7 @@ int s21_div(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
     int res = 0;
     decimal_bit3 db3;
     db3.i = value_2.bits[3];
-    if (value_2.bits[0] == 0 && value_2.bits[1] == 0 && value_2.bits[2] == 0 && db3.parts.power != 0) {
+    if (value_2.bits[0] == 0 && value_2.bits[1] == 0 && value_2.bits[2] == 0 && db3.parts.scale != 0) {
         res = 3;
     }
     return res;

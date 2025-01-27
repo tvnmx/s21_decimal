@@ -3,6 +3,8 @@
 
 #include "s21_decimal.h"
 
+uint32_t get_sign(s21_decimal value);
+uint32_t get_scale(s21_decimal value);
 int s21_multiply_by_10(s21_decimal *value);
 s21_decimal s21_int128_binary_division(s21_decimal decimal1, s21_decimal decimal2, s21_decimal *ost);
 s21_decimal s21_int128_get_ten_pow(int pow);
