@@ -45,22 +45,19 @@ int s21_mul(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
 
     uint32_t sign1 = get_sign(value_1);
     uint32_t sign2 = get_sign(value_2);
+    uint32_t res_sign = get_sign(*result);
 
     uint32_t scale1 = get_scale(value_1);
     uint32_t scale2 = get_scale(value_2);
+    uint32_t res_scale = get_scale(*result);
 
     if (scale1 + scale2 <= 28) {
-        db3r.parts.scale = db31.parts.scale + db32.parts.scale;
+         s21_set_scale(result, scale1 + scale2);
     } else {
-        db3r.parts.scale = 28;
+        res_scale = 28;
     }
 
-    if (db31.parts.sign == db32.parts.sign) {
-        db3r.parts.sign = 0;
-    } else {
-        db3r.parts.sign = 1;
-    }
-
+    res_sign = (sign1 != sign2);
 
 
     return res;
@@ -89,15 +86,11 @@ int s21_is_greater(s21_decimal a, s21_decimal b) {
     bool flag = 0;
     s21_decimal tmp1 = s21_trim_trailing_zeros(a);
     s21_decimal tmp2 = s21_trim_trailing_zeros(b);
-    decimal_bit3 db31;
-    db31.i = tmp1.bits[3];
-    uint32_t sign1 = db31.parts.sign;
-    decimal_bit3 db32;
-    db32.i = tmp2.bits[3];
-    uint32_t sign2 = db32.parts.sign;
-    if (sign1 < sign2) {
+    uint32_t sign_a = get_sign(tmp1);
+    uint32_t sign_b = get_sign(tmp2);
+    if (sign_a < sign_b) {
         result = 1;
-    } else if (sign1 == sign2) {
+    } else if (sign_a == sign_b) {
         for (int i = 0; i < 3 && !flag; i++) {
             if (tmp1.bits[i] > tmp2.bits[i]) {
                 result = 1;
@@ -116,7 +109,7 @@ int s21_is_greater_or_equal(s21_decimal a, s21_decimal b) {
 }
 
 int s21_is_equal(s21_decimal a, s21_decimal b) {
-    bool result = false;
+    int result = 0;
     s21_decimal tmp1 = s21_trim_trailing_zeros(a);
     s21_decimal tmp2 = s21_trim_trailing_zeros(b);
 
@@ -127,7 +120,7 @@ int s21_is_equal(s21_decimal a, s21_decimal b) {
         (tmp1.bits[0] == 0 && tmp1.bits[1] == 0
          && tmp1.bits[2] == 0 && tmp2.bits[0] == 0
          && tmp2.bits[1] == 0 && tmp2.bits[2] == 0)) {
-        result = true;
+        result = 1;
     }
     return result;
 }

@@ -32,10 +32,15 @@ void s21_decimal_zero(s21_decimal *dst) {
     }
 }
 
-void s21_set_sign(s21_decimal *dst, int sign) {
-    if (sign < 0) {
-        dst->bits[3] |= (1 << 31);
-    }
+void s21_set_sign(s21_decimal *dst, uint32_t sign) {
+    dst->bits[3] |= (sign << 31);
+}
+
+void s21_set_scale(s21_decimal *decimal, uint32_t scale) {
+    decimal_bit3 db3;
+    db3.i = decimal->bits[3];
+    db3.parts.scale = scale;
+    decimal->bits[3] = db3.i;
 }
 
 void s21_print_decimal(s21_decimal dec) {
@@ -62,7 +67,7 @@ void s21_abs(s21_decimal value, s21_decimal *result) {
     }
 }
 
-int s21_is_valid_decimal(s21_decimal value) {
+bool s21_is_valid_decimal(s21_decimal value) {
     bool result = true;
     decimal_bit3 db3;
     db3.i = value.bits[3];
@@ -83,18 +88,16 @@ bool s21_are_all_bits_zero(s21_decimal value) {
 
 s21_decimal s21_trim_trailing_zeros(s21_decimal value) {
     s21_decimal result = value;
-    decimal_bit3 db3;
-    db3.i = value.bits[3];
-    uint32_t power = db3.parts.scale;
-    if (power > 0 && s21_is_valid_decimal(value)) {
+    uint32_t scale = get_scale(value);
+    if (scale > 0 && s21_is_valid_decimal(value)) {
         s21_decimal ost = { .bits = {0, 0, 0, 0}};
         s21_decimal tmp = value;
         tmp.bits[3] = 0;
 
-        while (power > 0 && s21_are_all_bits_zero(ost)) {
+        while (scale > 0 && s21_are_all_bits_zero(ost)) {
             tmp = s21_int128_binary_division(tmp, s21_int128_get_ten_pow(1), &ost);
             if (s21_are_all_bits_zero(ost)) {
-                --power;
+                --scale;
                 result = tmp;
             }
         }
