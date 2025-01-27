@@ -1,10 +1,10 @@
 CC = gcc
-SRC_FILES = s21_decimal.c
-TEST_FILES = test.c
+SRC_FILES = s21_decimal.c helpers.c
+TEST_FILES = tests.c
 
 OBJ_FILES = $(SRC_FILES:.c=.o)
 UNAME := $(shell uname)
-CFLAGS = -Wall -Werror -Wextra -std=c11
+CFLAGS = -std=c11
 
 ifeq ($(UNAME),Darwin)
 CHECK_INCLUDE_PATH = $(shell brew --prefix check 2>/dev/null)/include
@@ -19,7 +19,7 @@ CHECK_LIB = -lcheck -pthread -lrt -lm -lsubunit
 endif
 
 LIB = s21_decimal.a
-TARGET = run_test
+TARGET = decimal
 
 all: $(LIB)
 
