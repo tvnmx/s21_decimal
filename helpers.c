@@ -1,12 +1,47 @@
 #include "helpers.h"
 
-uint32_t get_sign(s21_decimal value) {
+void s21_shift_left(s21_decimal *value) {
+    unsigned int carry = 0;
+    for (int i = 0; i < 3; i++) {
+        unsigned int next_carry = (value->bits[i] >> 31) & 1;
+        value->bits[i] = (value->bits[i] << 1) | carry;
+        carry = next_carry;
+    }
+}
+
+void s21_equalize_scales(s21_decimal value_1, s21_decimal value_2, int *error) {
+    uint32_t scale1 = s21_get_scale(value_1);
+    uint32_t scale2 = s21_get_scale(value_2);
+    while (scale1 != scale2) {
+        if (scale1 < scale2) {
+            if (s21_multiply_by_10(&value_1)) {
+                *error = 1;
+            }
+            scale1++;
+        } else {
+            if (s21_multiply_by_10(&value_2)) {
+                *error = 1;
+            }
+            scale2++;
+        }
+    }
+}
+
+uint32_t s21_mul_bit(uint32_t first_bit, uint32_t second_bit, uint32_t *carry) {
+    uint64_t big_bit = first_bit * second_bit;
+    big_bit += *carry;
+    uint32_t res_bit = (uint32_t) big_bit;
+    *carry = (uint32_t) (big_bit >> 32);
+    return res_bit;
+}
+
+uint32_t s21_get_sign(s21_decimal value) {
     decimal_bit3 db3;
     db3.i = value.bits[3];
     return db3.parts.sign;
 }
 
-uint32_t get_scale(s21_decimal value) {
+uint32_t s21_get_scale(s21_decimal value) {
     decimal_bit3 db3;
     db3.i = value.bits[3];
     return db3.parts.scale;
@@ -88,14 +123,16 @@ bool s21_are_all_bits_zero(s21_decimal value) {
 
 s21_decimal s21_trim_trailing_zeros(s21_decimal value) {
     s21_decimal result = value;
-    uint32_t scale = get_scale(value);
+    uint32_t scale = s21_get_scale(value);
     if (scale > 0 && s21_is_valid_decimal(value)) {
         s21_decimal ost = { .bits = {0, 0, 0, 0}};
         s21_decimal tmp = value;
         tmp.bits[3] = 0;
-
+        s21_decimal DECIMAL_TEN = { .bits = {10, 0, 0, 0} };
         while (scale > 0 && s21_are_all_bits_zero(ost)) {
-            tmp = s21_int128_binary_division(tmp, s21_int128_get_ten_pow(1), &ost);
+            s21_div(tmp, DECIMAL_TEN, &tmp);
+            s21_truncate(tmp, &ost);
+            s21_sub(tmp, ost, &ost);
             if (s21_are_all_bits_zero(ost)) {
                 --scale;
                 result = tmp;

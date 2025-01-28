@@ -3,11 +3,13 @@
 
 #include "s21_decimal.h"
 
-uint32_t get_sign(s21_decimal value);
-uint32_t get_scale(s21_decimal value);
+void s21_shift_left(s21_decimal *value);
+void s21_equalize_scales(s21_decimal value_1, s21_decimal value_2, int *error);
+uint32_t s21_mul_bit(uint32_t first_bit, uint32_t second_bit, uint32_t *carry);
+uint32_t s21_get_sign(s21_decimal value);
+uint32_t s21_get_scale(s21_decimal value);
 int s21_multiply_by_10(s21_decimal *value);
 s21_decimal s21_int128_binary_division(s21_decimal decimal1, s21_decimal decimal2, s21_decimal *ost);
-s21_decimal s21_int128_get_ten_pow(uint32_t pow);
 void s21_decimal_zero(s21_decimal *dst);
 void s21_set_scale(s21_decimal *decimal, uint32_t scale);
 void s21_set_sign(s21_decimal *dst, uint32_t sign);
