@@ -28,7 +28,7 @@ void s21_equalize_scales(s21_decimal value_1, s21_decimal value_2, int *error) {
 }
 
 uint32_t s21_mul_bit(uint32_t first_bit, uint32_t second_bit, uint32_t *carry) {
-    uint64_t big_bit = first_bit * second_bit;
+    uint64_t big_bit = (uint64_t) first_bit * (uint64_t) second_bit;
     big_bit += *carry;
     uint32_t res_bit = (uint32_t) big_bit;
     *carry = (uint32_t) (big_bit >> 32);

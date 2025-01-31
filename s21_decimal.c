@@ -27,9 +27,11 @@ int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
         abs_value_2.bits[3] &= 0x7FFFFFFF;
 
         if (s21_is_greater_or_equal(abs_value_1, abs_value_2)) {
-            s21_sub(value_1, value_2, result);
+            value_2.bits[3] ^= 0x80000000;
+            error = s21_sub(value_1, value_2, result);
         } else {
-            s21_sub(value_2, value_1, result);
+            value_1.bits[3] ^= 0x80000000;
+            error = s21_sub(value_2, value_1, result);
             result->bits[3] ^= 0x80000000;
         }
     }
@@ -38,8 +40,50 @@ int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
 }
 
 int s21_sub(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
-    value_2.bits[3] ^= 0x80000000;
-    return s21_add(value_1, value_2, result);
+    s21_decimal zero = {0, 0, 0, 0};
+    *result = zero;
+    int error = 0;
+    uint32_t sign1 = s21_get_sign(value_1);
+    uint32_t sign2 = s21_get_sign(value_2);
+
+    s21_equalize_scales(value_1, value_2, &error);
+
+    if (sign1 == sign2) {
+        uint64_t carry = 0;
+        if (s21_is_greater_or_equal(value_1, value_2)) {
+            for (int i = 0; i < 3; i++) {
+                uint64_t sum = (uint64_t) value_1.bits[i] - value_2.bits[i] + carry;
+                result->bits[i] = (uint32_t) (sum & 0xFFFFFFFF);
+                carry = sum >> 32;
+            }
+        } else {
+            for (int i = 0; i < 3; i++) {
+                uint64_t sum = (uint64_t) value_2.bits[i] - value_1.bits[i] + carry;
+                result->bits[i] = (uint32_t) (sum & 0xFFFFFFFF);
+                carry = sum >> 32;
+            }
+            result->bits[3] ^= 0x80000000;
+        }
+        if (carry) {
+            error = sign1 == 0 ? 1 : 2;
+        }
+    } else {
+        s21_decimal abs_value_1 = value_1;
+        s21_decimal abs_value_2 = value_2;
+
+        abs_value_1.bits[3] &= 0x7FFFFFFF;
+        abs_value_2.bits[3] &= 0x7FFFFFFF;
+
+        if (s21_is_greater_or_equal(abs_value_1, abs_value_2)) {
+            value_2.bits[3] ^= 0x80000000;
+            error = s21_add(value_1, value_2, result);
+        } else {
+            value_1.bits[3] ^= 0x80000000;
+            error = s21_add(value_2, value_1, result);
+            result->bits[3] ^= 0x80000000;
+        }
+    }
+    return error;
 }
 
 int s21_mul(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
@@ -52,20 +96,33 @@ int s21_mul(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
     uint32_t scale2 = s21_get_scale(value_2);
 
     if (scale1 + scale2 <= 28) {
-         s21_set_scale(result, scale1 + scale2);
+        s21_set_scale(result, scale1 + scale2);
     } else {
         s21_set_scale(result, 28);
     }
-
+    if (scale1 < scale2) {
+        while (scale2 > scale1) {
+            s21_multiply_by_10(&value_1);
+            scale1++;
+        }
+    } else {
+        while (scale1 > scale2) {
+            s21_multiply_by_10(&value_2);
+            scale2++;
+        }
+    }
     s21_set_sign(result, sign1 != sign2);
     uint32_t carry = 0;
     uint32_t tmp;
+
     for (int i = 0; i <= 2; i++) {
-        tmp = s21_mul_bit(value_1.bits[i], value_2.bits[i], &carry);
-        if (i == 2 && carry != 0) {
-            res = 1;
-        } else {
-            result->bits[i] = tmp;
+        for (int j = 0; j <= 2; j++) {
+            tmp = s21_mul_bit(value_1.bits[i], value_2.bits[j], &carry);
+            if (i == 2 && carry != 0) {
+                res = 1;
+            } else {
+                result->bits[i] += tmp;
+            }
         }
     }
     if (res != 1 && s21_get_scale(*result) == 28 && result->bits[0] == 0 && result->bits[1] == 0 && result->bits[2] == 0) {

@@ -51,13 +51,13 @@ START_TEST(test_s21_sub_basic) {
 END_TEST
 
 START_TEST(test_s21_sub_underflow) {
-    s21_decimal a = {{0, 0, 0, 0}};
-    s21_decimal b = {{1, 0, 0, 0}};
+    s21_decimal a = {{UINT32_MAX, UINT32_MAX, UINT32_MAX, 1<<31}};
+    s21_decimal b = {{1, 0, 0, 1}};
     s21_decimal result = {{0, 0, 0, 0}};
 
     int res = s21_sub(a, b, &result);
 
-    ck_assert_int_eq(res, 1);
+    ck_assert_int_eq(res, 2);
 }
 END_TEST
 
@@ -70,7 +70,7 @@ START_TEST(test_s21_sub_negative_result) {
 
     ck_assert_int_eq(res, 0);
     ck_assert_int_eq(result.bits[0], 2);
-    ck_assert_int_eq(result.bits[3] & (1 << 31), (1 << 31));
+    ck_assert_int_eq((uint32_t) result.bits[3] & (1 << 31), (uint32_t) (1 << 31));
 }
 END_TEST
 
