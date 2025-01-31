@@ -114,9 +114,7 @@ int s21_div(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
                 s21_add(temp_result, one, &temp_result);
             }
             s21_set_sign(&temp_result, result_sign);
-            if (flag == 0) {
-                *result = temp_result;
-            }
+            *result = temp_result;
         }
     }
     return flag;
@@ -195,7 +193,7 @@ int s21_from_float_to_decimal(float src, s21_decimal *dst) {
         flag = 1;
     }
     if (flag == 0) {
-        int sign = src < 0 ? -1 : 1;
+        int sign = src < 0 ? 1 : 0;
         src = (float) fabs((double) src);
         int scale = 0;
         while (src >= 1e7) {
@@ -206,6 +204,10 @@ int s21_from_float_to_decimal(float src, s21_decimal *dst) {
             src *= 10;
             scale++;
         }
+        while ((int)src % 10 == 0) {
+            src /= 10;
+            scale--;
+        }
         int integer_part = (int) round((double) src);
         dst->bits[0] = integer_part;
         dst->bits[3] |= (scale << 16);
@@ -215,8 +217,8 @@ int s21_from_float_to_decimal(float src, s21_decimal *dst) {
 }
 
 int s21_from_decimal_to_int(s21_decimal src, int *dst) {
-    int res = s21_is_valid_decimal(src);
-    if (res == 1) {
+    int res = !s21_is_valid_decimal(src);
+    if (res == 0) {
         int flag = 0;
         if (src.bits[3] >> 16 != 0) {
             uint32_t scale = (src.bits[3] >> 16) & 0xFF;
@@ -244,8 +246,8 @@ int s21_from_decimal_to_int(s21_decimal src, int *dst) {
 }
 
 int s21_from_decimal_to_float(s21_decimal src, float *dst) {
-    int res = s21_is_valid_decimal(src);
-    if (res == 1) {
+    int res = !s21_is_valid_decimal(src);
+    if (res == 0) {
         float result = 0;
         result += (float) src.bits[0];
         uint32_t scale = (src.bits[3] >> 16) & 0xFF;
@@ -262,8 +264,8 @@ int s21_from_decimal_to_float(s21_decimal src, float *dst) {
 }
 
 int s21_floor(s21_decimal value, s21_decimal *result) {
-    int res = s21_is_valid_decimal(value);
-    if (res == 1) {
+    int res = !s21_is_valid_decimal(value);
+    if (res == 0) {
         s21_decimal ten = { .bits = {10, 0, 0, 0} };
         uint32_t sign = (value.bits[3] >> 31) & 0x1;
         s21_truncate(value, result);
@@ -279,8 +281,8 @@ int s21_floor(s21_decimal value, s21_decimal *result) {
 }
 
 int s21_round(s21_decimal value, s21_decimal *result) {
-    int res = s21_is_valid_decimal(value);
-    if (res == 1) {
+    int res = !s21_is_valid_decimal(value);
+    if (res == 0) {
         s21_decimal ten = { .bits = {10, 0, 0, 0} };
         uint32_t sign = (value.bits[3] >> 31) & 0x1;
         s21_truncate(value, result);
@@ -303,19 +305,19 @@ int s21_round(s21_decimal value, s21_decimal *result) {
 }
 
 int s21_truncate(s21_decimal value, s21_decimal *result) {
-    int res = s21_is_valid_decimal(value);
-    if (res == 1) {
+    int res = !s21_is_valid_decimal(value);
+    if (res == 0) {
         s21_trim_trailing_zeros(value);
         s21_decimal ten = {.bits = {10, 0, 0, 0}};
         s21_decimal_zero(result);
-        uint32_t scale = (value.bits[3] >> 16) & 0xFF;
+        uint32_t scale = s21_get_scale(value);
         if (scale == 0) {
             *result = value;
         } else {
             s21_decimal integer_part;
             s21_decimal temp = value;
             temp.bits[3] &= ~(0xFF << 16);
-            for (int i = 0; i < scale; ++i) {
+            for (int i = 0; i < scale; i++) {
                 s21_div(temp, ten, &integer_part);
                 temp = integer_part;
             }
@@ -326,8 +328,8 @@ int s21_truncate(s21_decimal value, s21_decimal *result) {
 }
 
 int s21_negate(s21_decimal value, s21_decimal *result) {
-    int res = s21_is_valid_decimal(value);
-    if (res == 1) {
+    int res = !s21_is_valid_decimal(value);
+    if (res == 0) {
         s21_dec_assignment(value, result);
         s21_set_sign(result, 1);
     }

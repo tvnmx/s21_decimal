@@ -87,7 +87,7 @@ START_TEST(test_s21_mul_basic) {
 END_TEST
 
 START_TEST(test_s21_mul_overflow) {
-    s21_decimal a = {{UINT32_MAX, 0, 0, 0}};
+    s21_decimal a = {{0, 0, UINT32_MAX, 0}};
     s21_decimal b = {{2, 0, 0, 0}};
     s21_decimal result = {{0, 0, 0, 0}};
 
@@ -106,7 +106,7 @@ START_TEST(test_s21_mul_negative_result) {
 
     ck_assert_int_eq(res, 0);
     ck_assert_int_eq(result.bits[0], 6);
-    ck_assert_int_eq(result.bits[3] & (1 << 31), (1 << 31));
+    ck_assert_int_eq((uint32_t) result.bits[3] & (1 << 31), (uint32_t) (1 << 31));
 }
 END_TEST
 
@@ -207,7 +207,7 @@ START_TEST(test_s21_is_not_equal) {
 END_TEST
 
 START_TEST(test_s21_floor) {
-    s21_decimal a = {{314, 0, 0, (3 << 16)}};
+    s21_decimal a = {{314, 0, 0, (2 << 16)}};
     s21_decimal result = {{0, 0, 0, 0}};
 
     int res = s21_floor(a, &result);
@@ -218,7 +218,7 @@ START_TEST(test_s21_floor) {
 END_TEST
 
 START_TEST(test_s21_round) {
-    s21_decimal a = {{314, 0, 0, (3 << 16)}};
+    s21_decimal a = {{314, 0, 0, (2 << 16)}};
     s21_decimal result = {{0, 0, 0, 0}};
 
     int res = s21_round(a, &result);
@@ -229,7 +229,7 @@ START_TEST(test_s21_round) {
 END_TEST
 
 START_TEST(test_s21_truncate) {
-    s21_decimal a = {{314, 0, 0, (3 << 16)}};
+    s21_decimal a = {{314, 0, 0, (2 << 16)}};
     s21_decimal result = {{0, 0, 0, 0}};
 
     int res = s21_truncate(a, &result);
@@ -247,7 +247,7 @@ START_TEST(test_s21_negate) {
 
     ck_assert_int_eq(res, 0);
     ck_assert_int_eq(result.bits[0], 314);
-    ck_assert_int_eq(result.bits[3] & (1 << 31), (1 << 31));
+    ck_assert_int_eq((uint32_t) result.bits[3] & (1 << 31), (uint32_t) (1 << 31));
 }
 END_TEST
 
@@ -269,8 +269,8 @@ START_TEST(test_s21_from_float_to_decimal) {
     int res = s21_from_float_to_decimal(a, &result);
 
     ck_assert_int_eq(res, 0);
-    ck_assert_int_eq(result.bits[0], 123);
-    ck_assert_int_eq(result.bits[3] >> 16, 2);
+    ck_assert_int_eq(result.bits[0], 123456);
+    ck_assert_int_eq(result.bits[3] >> 16, 3);
 }
 END_TEST
 

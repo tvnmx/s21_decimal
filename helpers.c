@@ -68,7 +68,11 @@ void s21_decimal_zero(s21_decimal *dst) {
 }
 
 void s21_set_sign(s21_decimal *dst, uint32_t sign) {
-    dst->bits[3] |= (sign << 31);
+    if (sign) {
+        dst->bits[3] |= (1 << 31);
+    } else {
+        dst->bits[3] &= ~(1 << 31);
+    }
 }
 
 void s21_set_scale(s21_decimal *decimal, uint32_t scale) {
