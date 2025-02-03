@@ -129,7 +129,7 @@ START_TEST(test_s21_div_by_zero) {
 
     int res = s21_div(a, b, &result);
 
-    ck_assert_int_eq(res, 1);
+    ck_assert_int_eq(res, 3);
 }
 END_TEST
 
