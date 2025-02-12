@@ -1,5 +1,23 @@
 #include "helpers.h"
 
+
+int div_support(s21_decimal *remainder, s21_decimal divisible, s21_decimal divisor, s21_decimal *quotient) {
+    for (int i = 0; i < 96; i++) {
+        s21_shift_left(remainder);
+        (*remainder).bits[0] |= (divisible.bits[2] >> 31) & 1;
+        s21_shift_left(&divisible);
+
+        if (s21_is_greater_or_equal(*remainder, divisor)) {
+            s21_sub(*remainder, divisor, remainder);
+            (*quotient).bits[0] |= 1;
+            (*quotient).bits[1] |= 1;
+            (*quotient).bits[2] |= 1;
+        }
+        if (i != 95) s21_shift_left(&(*quotient));
+    }
+    return 0;
+}
+
 void s21_shift_left(s21_decimal *value) {
     unsigned int carry = 0;
     for (int i = 0; i < 3; i++) {
@@ -26,7 +44,6 @@ void s21_equalize_scales(s21_decimal value_1, s21_decimal value_2, int *error) {
         }
     }
 }
-
 uint32_t s21_mul_bit(uint32_t first_bit, uint32_t second_bit, uint32_t *carry) {
     uint64_t big_bit = (uint64_t) first_bit * (uint64_t) second_bit;
     big_bit += *carry;
@@ -52,13 +69,36 @@ int s21_multiply_by_10(s21_decimal *value) {
     int res = 0;
     for (int i = 0; i < 3; i++) {
         uint64_t ans = (uint64_t)value->bits[i] * 10 + carry;
-        value->bits[i] = (uint32_t)(ans & 0xFFFFFFFF);
-        carry = ans >> 32;
+
+        if (ans > 0xFFFFFFFF) {
+            carry = ans >> 32;
+            value->bits[i] = (uint32_t)(ans & 0xFFFFFFFF);
+        } else {
+            carry = 0;
+            value->bits[i] = (uint32_t)ans;
+        }
+
     }
     if (carry != 0) {
+
         res = 1;
     }
+
     return res;
+}
+
+void s21_normalize(s21_decimal *a, s21_decimal *b) {
+    int scale_a = s21_get_scale(*a);
+    int scale_b = s21_get_scale(*b);
+
+    while (scale_a < scale_b) {
+        s21_multiply_by_10(a);
+        scale_a++;
+    }
+    while (scale_b < scale_a) {
+        s21_multiply_by_10(b);
+        scale_b++;
+    }
 }
 
 void s21_decimal_zero(s21_decimal *dst) {
@@ -144,4 +184,15 @@ s21_decimal s21_trim_trailing_zeros(s21_decimal value) {
         }
     }
     return result;
+}
+
+void s21_div_by_10(int power, s21_decimal value, s21_decimal *result) {
+    for (int i = 0; i < power; i++) {
+        int num = value.bits[0] % 10;
+        s21_decimal acc;
+        s21_from_int_to_decimal(num, &acc);
+        if (s21_sub(value, acc, result) != 0) break;
+        s21_decimal ten = { .bits = {10, 0, 0, 0} };
+        if (s21_div(*result, ten, result) != 0) break;
+    }
 }

@@ -131,50 +131,55 @@ int s21_mul(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
     return res;
 }
 
+
 int s21_div(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
-    int flag = 0;
-    if (value_2.bits[0] == 0 && value_2.bits[1] == 0 && value_2.bits[2] == 0) {
-        flag = 3;
-    } else {
-        s21_decimal_zero(result);
-        uint32_t sign_1 = s21_get_sign(value_1);
-        uint32_t sign_2 = s21_get_sign(value_2);
-        uint32_t result_sign = sign_1 ^ sign_2;
-        s21_abs(value_1, &value_1);
-        s21_abs(value_2, &value_2);
-        uint32_t scale_1 = s21_get_scale(value_1);
-        uint32_t scale_2 = s21_get_scale(value_2);
-        int scale_diff = (int) scale_1 - (int) scale_2;
-        uint32_t result_scale = (scale_diff > 0) ? scale_diff : 0;
-        while (scale_diff < 0 && flag == 0) {
-            if (s21_multiply_by_10(&value_1) != 0) {
-                flag = 1;
-            }
-            scale_diff++;
-        }
-        if (flag == 0) {
-            s21_decimal remainder = value_1;
-            s21_decimal temp_result = {0};
-            for (int i = 0; i < 96; i++) {
-                s21_shift_left(&temp_result);
-                s21_shift_left(&remainder);
-                if (s21_is_greater_or_equal(remainder, value_2)) {
-                    s21_sub(remainder, value_2, &remainder);
-                    temp_result.bits[0] |= 1;
-                }
-            }
-            temp_result.bits[3] |= (result_scale << 16);
-            s21_decimal fractional_part = remainder;
-            s21_multiply_by_10(&fractional_part);
-            if (s21_is_greater_or_equal(fractional_part, value_2)) {
-                s21_decimal one = { .bits = {1, 0, 0, 0} };
-                s21_add(temp_result, one, &temp_result);
-            }
-            s21_set_sign(&temp_result, result_sign);
-            *result = temp_result;
-        }
+    int error = 0;
+    if ((value_2.bits[0] == 0 && value_2.bits[1] == 0 && value_2.bits[2] == 0)) {
+        return 3;
     }
-    return flag;
+
+    s21_decimal divisible = value_1;
+    s21_decimal divisor = value_2;
+    s21_decimal quotient = {. bits = {0, 0, 0, 0}};
+    s21_decimal remainder = {. bits = {0, 0, 0, 0}};
+    int sign = ((divisible.bits[3] >> 31) ^ (divisor.bits[3] >> 31)) & 1;
+//        s21_abs(divisible, &divisible);
+//        s21_abs(divisor, &divisor);
+    s21_normalize(&divisible, &divisor);
+    int final_scale = s21_get_scale(divisible) - s21_get_scale(divisor);
+
+    divisible.bits[3] = 0;
+    divisor.bits[3] = 0;
+
+    div_support(&remainder, divisible, divisor, &quotient);
+
+    s21_decimal quotient2 = {. bits = {0, 0, 0, 0}};
+    int cnt = 1;
+    int scale = 0;
+    while ((remainder.bits[0] != 0 || remainder.bits[1] != 0 || remainder.bits[2] != 0) && scale < 28) {
+        cnt++;
+        s21_multiply_by_10(&remainder);
+
+        s21_decimal digit = {. bits = {0, 0, 0, 0}};
+
+        div_support(&digit, remainder, divisor, &quotient2);
+        quotient2.bits[0] |= (digit.bits[0] & 1);
+        // s21_decimal ten ={. bits = {10,0,0,0}};
+        // s21_mul(quotient, ten, &quotient);
+        s21_multiply_by_10(&quotient);
+        s21_add(quotient, quotient2, &quotient);
+        scale++;
+        remainder.bits[0] = digit.bits[0];
+        remainder.bits[1] = digit.bits[1];
+        remainder.bits[2] = digit.bits[2];
+    }
+
+    final_scale = fmax(scale, final_scale);
+    if (final_scale > 28) final_scale = 28;
+    s21_set_scale(&quotient, final_scale);
+    s21_set_sign(&quotient, sign);
+    *result = quotient;
+    return error;
 }
 
 int s21_is_less(s21_decimal a, s21_decimal b) {
@@ -365,19 +370,18 @@ int s21_truncate(s21_decimal value, s21_decimal *result) {
     int res = !s21_is_valid_decimal(value);
     if (res == 0) {
         s21_trim_trailing_zeros(value);
-        s21_decimal ten = {.bits = {10, 0, 0, 0}};
         s21_decimal_zero(result);
         uint32_t scale = s21_get_scale(value);
         if (scale == 0) {
             *result = value;
         } else {
-            s21_decimal integer_part;
             s21_decimal temp = value;
             temp.bits[3] &= ~(0xFF << 16);
-            for (int i = 0; i < scale; i++) {
-                s21_div(temp, ten, &integer_part);
-                temp = integer_part;
-            }
+            s21_decimal integer_part;
+            s21_div_by_10(scale, temp, &integer_part);
+            temp.bits[0] = integer_part.bits[0];
+            temp.bits[1] = integer_part.bits[1];
+            temp.bits[2] = integer_part.bits[2];
             *result = temp;
         }
     }
@@ -393,3 +397,14 @@ int s21_negate(s21_decimal value, s21_decimal *result) {
     return res;
 }
 
+int main() {
+    printf("%s", "yo");
+    s21_decimal a = {{314, 0, 0, (2 << 16)}};
+    s21_decimal result = {{0, 0, 0, 0}};
+    printf("%s", "yo");
+    int res = s21_truncate(a, &result);
+    if (res == 0) {
+        printf("%s", "yo");
+    }
+    return 0;
+}
