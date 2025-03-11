@@ -7,7 +7,7 @@ int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
     uint32_t sign1 = s21_get_sign(value_1);
     uint32_t sign2 = s21_get_sign(value_2);
 
-    s21_equalize_scales(value_1, value_2, &error);
+    s21_equalize_scales(&value_1, &value_2, &error);
 
     if (sign1 == sign2) {
         uint64_t carry = 0;
@@ -46,7 +46,7 @@ int s21_sub(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
     uint32_t sign1 = s21_get_sign(value_1);
     uint32_t sign2 = s21_get_sign(value_2);
 
-    s21_equalize_scales(value_1, value_2, &error);
+    s21_equalize_scales(&value_1, &value_2, &error);
 
     if (sign1 == sign2) {
         uint64_t carry = 0;
@@ -190,9 +190,7 @@ int s21_is_less_or_equal(s21_decimal a, s21_decimal b) {
 int s21_is_greater(s21_decimal a, s21_decimal b) {
     int result = 0;
     bool flag = 0;
-    s21_equalize_scales(a, b, &result);
-    s21_print_decimal(a);
-    s21_print_decimal(b);
+    s21_equalize_scales(&a, &b, &result);
     s21_decimal tmp1 = a;
     s21_decimal tmp2 = b;
     uint32_t sign_a = s21_get_sign(tmp1);
@@ -378,6 +376,7 @@ int s21_round(s21_decimal value, s21_decimal *result) {
         uint32_t sign = s21_get_sign(value);
         s21_decimal fractional_part;
         s21_ostatok(value, &fractional_part);
+        s21_set_scale(&fractional_part, s21_get_scale(value));
         s21_truncate(value, result);
         s21_decimal fractional1;
         s21_from_float_to_decimal((float) 0.5, &fractional1);
@@ -394,19 +393,19 @@ int s21_round(s21_decimal value, s21_decimal *result) {
     return res;
 }
 
-int main() {
-    s21_decimal a = {{314, 0, 0, 2 << 16}};
-    s21_decimal c = {{5,0,0,1 << 16}};
-    printf("%d", s21_is_greater_or_equal(a, c));
-    s21_set_sign(&a, 1);
-    s21_decimal result = {{0, 0, 0, 0}};
-    int res = s21_round(a, &result);
-    if (res == 0) {
-        printf("%s", "yo");
-    }
-    int b;
-    s21_from_decimal_to_int(result, &b);
-    printf("%d", b);
-
-    return 0;
-}
+//int main() {
+//    s21_decimal a = {{314, 0, 0, 2 << 16}};
+//    s21_decimal c = {{5,0,0,1 << 16}};
+//
+//    s21_set_sign(&a, 1);
+//    s21_decimal result = {{0, 0, 0, 0}};
+//    int res = s21_round(a, &result);
+//    if (res == 0) {
+//        printf("%s", "yo");
+//    }
+//    int b;
+//    s21_from_decimal_to_int(result, &b);
+//    printf("%d", b);
+//
+//    return 0;
+//}

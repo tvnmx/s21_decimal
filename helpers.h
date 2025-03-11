@@ -6,7 +6,7 @@
 void s21_ostatok(s21_decimal value, s21_decimal *result);
 int div_support(s21_decimal *remainder, s21_decimal divisible, s21_decimal divisor, s21_decimal *quotient);
 void s21_shift_left(s21_decimal *value);
-void s21_equalize_scales(s21_decimal value_1, s21_decimal value_2, int *error);
+void s21_equalize_scales(s21_decimal *value_1, s21_decimal *value_2, int *error);
 uint32_t s21_mul_bit(uint32_t first_bit, uint32_t second_bit, uint32_t *carry);
 uint32_t s21_get_sign(s21_decimal value);
 uint32_t s21_get_scale(s21_decimal value);

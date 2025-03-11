@@ -27,22 +27,24 @@ void s21_shift_left(s21_decimal *value) {
     }
 }
 
-void s21_equalize_scales(s21_decimal value_1, s21_decimal value_2, int *error) {
-    uint32_t scale1 = s21_get_scale(value_1);
-    uint32_t scale2 = s21_get_scale(value_2);
+void s21_equalize_scales(s21_decimal *value_1, s21_decimal *value_2, int *error) {
+    uint32_t scale1 = s21_get_scale(*value_1);
+    uint32_t scale2 = s21_get_scale(*value_2);
     while (scale1 != scale2) {
         if (scale1 < scale2) {
-            if (s21_multiply_by_10(&value_1)) {
+            if (s21_multiply_by_10(value_1)) {
                 *error = 1;
             }
             scale1++;
         } else {
-            if (s21_multiply_by_10(&value_2)) {
+            if (s21_multiply_by_10(value_2)) {
                 *error = 1;
             }
             scale2++;
         }
     }
+    s21_set_scale(value_1, scale1);
+    s21_set_scale(value_2, scale2);
 }
 uint32_t s21_mul_bit(uint32_t first_bit, uint32_t second_bit, uint32_t *carry) {
     uint64_t big_bit = (uint64_t) first_bit * (uint64_t) second_bit;
