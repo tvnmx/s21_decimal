@@ -75,7 +75,7 @@ int s21_sub(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
                 }
                 result->bits[i] = (uint32_t)diff;
             }
-            result->bits[3] = 0x80000000;  // Устанавливаем знак отрицательного числа
+            result->bits[3] = 0x80000000;
         }
     } else {
         s21_decimal abs_value_1 = value_1;
@@ -153,14 +153,14 @@ int s21_div(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
     s21_decimal divisor = value_2;
     s21_decimal quotient = {. bits = {0, 0, 0, 0}};
     s21_decimal remainder = {. bits = {0, 0, 0, 0}};
-    int sign = ((divisible.bits[3] >> 31) ^ (divisor.bits[3] >> 31)) & 1;
-    s21_normalize(&divisible, &divisor);
-    int final_scale = s21_get_scale(divisible) - s21_get_scale(divisor);
-
+    uint32_t sign = ((divisible.bits[3] >> 31) ^ (divisor.bits[3] >> 31)) & 1;
+    s21_equalize_scales(&divisible, &divisor, &error);
+    uint32_t final_scale = s21_get_scale(divisible) - s21_get_scale(divisor);
     divisible.bits[3] = 0;
     divisor.bits[3] = 0;
 
     div_support(&remainder, divisible, divisor, &quotient);
+    s21_print_decimal(quotient);
 
     s21_decimal quotient2 = {. bits = {0, 0, 0, 0}};
     int cnt = 1;
@@ -181,7 +181,7 @@ int s21_div(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
         remainder.bits[2] = digit.bits[2];
     }
 
-    final_scale = fmax(scale, final_scale);
+    final_scale = (uint32_t) fmax(scale, final_scale);
     if (final_scale > 28) final_scale = 28;
     s21_set_scale(&quotient, final_scale);
     s21_set_sign(&quotient, sign);

@@ -1,22 +1,38 @@
 #include "helpers.h"
 
+int s21_get_bit(s21_decimal value, int index) {
+    uint32_t bit_position = index % 32;
+    uint32_t word_index = index / 32;
+    return (value.bits[word_index] >> bit_position) & 1;
+}
+
+void s21_set_bit(s21_decimal *value, int index, int bit) {
+    int bit_position = index % 32;
+    int word_index = index / 32;
+    if (bit)
+        value->bits[word_index] |= (1U << bit_position);
+    else
+        value->bits[word_index] &= ~(1U << bit_position);
+}
 
 int div_support(s21_decimal *remainder, s21_decimal divisible, s21_decimal divisor, s21_decimal *quotient) {
-    for (int i = 0; i < 96; i++) {
+    *remainder = (s21_decimal){{0, 0, 0, 0}};
+    *quotient = (s21_decimal){{0, 0, 0, 0}};
+
+    for (int i = 95; i >= 0; i--) {
         s21_shift_left(remainder);
-        (*remainder).bits[0] |= (divisible.bits[2] >> 31) & 1;
-        s21_shift_left(&divisible);
+        if (s21_get_bit(divisible, i)) {
+            s21_set_bit(remainder, 0, 1);
+        }
 
         if (s21_is_greater_or_equal(*remainder, divisor)) {
             s21_sub(*remainder, divisor, remainder);
-            (*quotient).bits[0] |= 1;
-            (*quotient).bits[1] |= 1;
-            (*quotient).bits[2] |= 1;
+            s21_set_bit(quotient, i, 1);
         }
-        if (i != 95) s21_shift_left(&(*quotient));
     }
     return 0;
 }
+
 
 void s21_shift_left(s21_decimal *value) {
     unsigned int carry = 0;
@@ -87,20 +103,6 @@ int s21_multiply_by_10(s21_decimal *value) {
     }
 
     return res;
-}
-
-void s21_normalize(s21_decimal *a, s21_decimal *b) {
-    int scale_a = s21_get_scale(*a);
-    int scale_b = s21_get_scale(*b);
-
-    while (scale_a < scale_b) {
-        s21_multiply_by_10(a);
-        scale_a++;
-    }
-    while (scale_b < scale_a) {
-        s21_multiply_by_10(b);
-        scale_b++;
-    }
 }
 
 void s21_decimal_zero(s21_decimal *dst) {

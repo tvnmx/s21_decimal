@@ -3,6 +3,8 @@
 
 #include "s21_decimal.h"
 
+int s21_get_bit(s21_decimal value, int index);
+void s21_set_bit(s21_decimal *value, int index, int bit);
 void s21_ostatok(s21_decimal value, s21_decimal *result);
 int div_support(s21_decimal *remainder, s21_decimal divisible, s21_decimal divisor, s21_decimal *quotient);
 void s21_shift_left(s21_decimal *value);
@@ -21,6 +23,5 @@ void s21_abs(s21_decimal value, s21_decimal *result);
 bool s21_is_valid_decimal(s21_decimal value);
 bool s21_are_all_bits_zero(s21_decimal value);
 s21_decimal s21_trim_trailing_zeros(s21_decimal value);
-void s21_normalize(s21_decimal *a, s21_decimal *b);
 void s21_div_by_10(uint32_t power, s21_decimal value, s21_decimal *result);
 #endif

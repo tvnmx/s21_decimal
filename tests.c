@@ -758,8 +758,8 @@ START_TEST(test_s21_div_scale_adjustment) {
     int res = s21_div(a, b, &result);
 
     ck_assert_int_eq(res, 0);
-    ck_assert_int_eq(result.bits[0], 123);
-    ck_assert_int_eq(s21_get_scale(result), 1);
+    ck_assert_int_eq(result.bits[0], 12345);
+    ck_assert_int_eq(s21_get_scale(result), 3);
 }
 END_TEST
 
@@ -794,9 +794,21 @@ START_TEST(test_s21_multiply_by_10_middle_overflow) {
 }
 END_TEST
 
+START_TEST(test_s21_mul_carry_propagation) {
+    s21_decimal a = {{0, 0, 0xFFFFFFFF, 0}};
+    s21_decimal b = {{0, 0, 0xFFFFFFFF, 0}};
+    s21_decimal result = {{0, 0, 0, 0}};
+
+    int res = s21_mul(a, b, &result);
+
+    ck_assert_int_eq(res, 1);
+}
+END_TEST
+
 Suite *s21_decimal_suite(void) {
     Suite *s = suite_create("s21_decimal");
     TCase *tc_core = tcase_create("Core");
+    tcase_add_test(tc_core, test_s21_mul_carry_propagation);
     tcase_add_test(tc_core, test_s21_mul_bit_no_carry);
     tcase_add_test(tc_core, test_s21_mul_bit_with_carry);
     tcase_add_test(tc_core, test_s21_mul_bit_overflow);
