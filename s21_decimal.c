@@ -82,6 +82,7 @@ int s21_sub(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
             error = s21_add(value_2, value_1, result);
             result->bits[3] ^= 0x80000000;
         }
+        s21_set_sign(result, 1);
     }
     return error;
 }
@@ -143,8 +144,6 @@ int s21_div(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
     s21_decimal quotient = {. bits = {0, 0, 0, 0}};
     s21_decimal remainder = {. bits = {0, 0, 0, 0}};
     int sign = ((divisible.bits[3] >> 31) ^ (divisor.bits[3] >> 31)) & 1;
-//        s21_abs(divisible, &divisible);
-//        s21_abs(divisor, &divisor);
     s21_normalize(&divisible, &divisor);
     int final_scale = s21_get_scale(divisible) - s21_get_scale(divisor);
 
@@ -164,8 +163,6 @@ int s21_div(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
 
         div_support(&digit, remainder, divisor, &quotient2);
         quotient2.bits[0] |= (digit.bits[0] & 1);
-        // s21_decimal ten ={. bits = {10,0,0,0}};
-        // s21_mul(quotient, ten, &quotient);
         s21_multiply_by_10(&quotient);
         s21_add(quotient, quotient2, &quotient);
         scale++;
@@ -193,14 +190,17 @@ int s21_is_less_or_equal(s21_decimal a, s21_decimal b) {
 int s21_is_greater(s21_decimal a, s21_decimal b) {
     int result = 0;
     bool flag = 0;
-    s21_decimal tmp1 = s21_trim_trailing_zeros(a);
-    s21_decimal tmp2 = s21_trim_trailing_zeros(b);
+    s21_equalize_scales(a, b, &result);
+    s21_print_decimal(a);
+    s21_print_decimal(b);
+    s21_decimal tmp1 = a;
+    s21_decimal tmp2 = b;
     uint32_t sign_a = s21_get_sign(tmp1);
     uint32_t sign_b = s21_get_sign(tmp2);
     if (sign_a < sign_b) {
         result = 1;
     } else if (sign_a == sign_b) {
-        for (int i = 0; i < 3 && !flag; i++) {
+        for (int i = 2; i >= 0 && !flag; i--) {
             if (tmp1.bits[i] > tmp2.bits[i]) {
                 result = 1;
                 flag = 1;
@@ -325,16 +325,46 @@ int s21_from_decimal_to_float(s21_decimal src, float *dst) {
     return res;
 }
 
+int s21_truncate(s21_decimal value, s21_decimal *result) {
+    int res = !s21_is_valid_decimal(value);
+    uint32_t sign = s21_get_sign(value);
+    if (res == 0) {
+        s21_decimal_zero(result);
+        uint32_t scale = s21_get_scale(value);
+        if (scale == 0) {
+            *result = value;
+        } else {
+            s21_decimal temp = value;
+            temp.bits[3] = 0;
+            s21_decimal integer_part;
+            s21_div_by_10(scale, temp, &integer_part);
+            temp.bits[0] = integer_part.bits[0];
+            temp.bits[1] = integer_part.bits[1];
+            temp.bits[2] = integer_part.bits[2];
+            *result = temp;
+            s21_set_sign(result, sign);
+        }
+    }
+    return res;
+}
+
+int s21_negate(s21_decimal value, s21_decimal *result) {
+    int res = !s21_is_valid_decimal(value);
+    if (res == 0) {
+        s21_dec_assignment(value, result);
+        s21_set_sign(result, 1);
+    }
+    return res;
+}
+
 int s21_floor(s21_decimal value, s21_decimal *result) {
     int res = !s21_is_valid_decimal(value);
     if (res == 0) {
-        s21_decimal ten = { .bits = {10, 0, 0, 0} };
-        uint32_t sign = (value.bits[3] >> 31) & 0x1;
+        uint32_t sign = s21_get_sign(value);
+        s21_decimal fr_part;
+        s21_ostatok(value, &fr_part);
         s21_truncate(value, result);
-        s21_decimal fractional_part;
-        s21_mul(*result, ten, &fractional_part);
-        s21_sub(value, fractional_part, &fractional_part);
-        if (sign == 1 && !(fractional_part.bits[0] == 0 && fractional_part.bits[1] == 0 && fractional_part.bits[2] == 0)) {
+        if (sign == 1 && !(fr_part.bits[0] == 0 && fr_part.bits[1] == 0 && fr_part.bits[2] == 0) ) {
             s21_decimal one = { .bits = {1, 0, 0, 0} };
             s21_sub(*result, one, result);
         }
@@ -345,12 +375,10 @@ int s21_floor(s21_decimal value, s21_decimal *result) {
 int s21_round(s21_decimal value, s21_decimal *result) {
     int res = !s21_is_valid_decimal(value);
     if (res == 0) {
-        s21_decimal ten = { .bits = {10, 0, 0, 0} };
-        uint32_t sign = (value.bits[3] >> 31) & 0x1;
-        s21_truncate(value, result);
+        uint32_t sign = s21_get_sign(value);
         s21_decimal fractional_part;
-        s21_mul(*result, ten, &fractional_part);
-        s21_sub(value, fractional_part, &fractional_part);
+        s21_ostatok(value, &fractional_part);
+        s21_truncate(value, result);
         s21_decimal fractional1;
         s21_from_float_to_decimal((float) 0.5, &fractional1);
         if (s21_is_greater_or_equal(fractional_part, fractional1) == 1) {
@@ -366,45 +394,19 @@ int s21_round(s21_decimal value, s21_decimal *result) {
     return res;
 }
 
-int s21_truncate(s21_decimal value, s21_decimal *result) {
-    int res = !s21_is_valid_decimal(value);
-    if (res == 0) {
-        s21_trim_trailing_zeros(value);
-        s21_decimal_zero(result);
-        uint32_t scale = s21_get_scale(value);
-        if (scale == 0) {
-            *result = value;
-        } else {
-            s21_decimal temp = value;
-            temp.bits[3] &= ~(0xFF << 16);
-            s21_decimal integer_part;
-            s21_div_by_10(scale, temp, &integer_part);
-            temp.bits[0] = integer_part.bits[0];
-            temp.bits[1] = integer_part.bits[1];
-            temp.bits[2] = integer_part.bits[2];
-            *result = temp;
-        }
-    }
-    return res;
-}
-
-int s21_negate(s21_decimal value, s21_decimal *result) {
-    int res = !s21_is_valid_decimal(value);
-    if (res == 0) {
-        s21_dec_assignment(value, result);
-        s21_set_sign(result, 1);
-    }
-    return res;
-}
-
 int main() {
-    printf("%s", "yo");
-    s21_decimal a = {{314, 0, 0, (2 << 16)}};
+    s21_decimal a = {{314, 0, 0, 2 << 16}};
+    s21_decimal c = {{5,0,0,1 << 16}};
+    printf("%d", s21_is_greater_or_equal(a, c));
+    s21_set_sign(&a, 1);
     s21_decimal result = {{0, 0, 0, 0}};
-    printf("%s", "yo");
-    int res = s21_truncate(a, &result);
+    int res = s21_round(a, &result);
     if (res == 0) {
         printf("%s", "yo");
     }
+    int b;
+    s21_from_decimal_to_int(result, &b);
+    printf("%d", b);
+
     return 0;
 }

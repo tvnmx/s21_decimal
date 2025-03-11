@@ -7,8 +7,12 @@ UNAME := $(shell uname)
 CFLAGS = -std=c11
 
 ifeq ($(UNAME),Darwin)
-CHECK_INCLUDE_PATH = $(shell brew --prefix check 2>/dev/null)/include
-CHECK_LIB_PATH = $(shell brew --prefix check 2>/dev/null)/lib
+CHECK_INCLUDE_PATH = /Users/ameefals/.brew/Cellar/check/0.15.2/include
+CHECK_LIB_PATH = /Users/ameefals/.brew/Cellar/check/0.15.2/lib
+#CHECK_INCLUDE_PATH = $(shell brew --prefix check 2>/dev/null)/include
+#CHECK_LIB_PATH = $(shell brew --prefix check 2>/dev/null)/lib
+
+
 OPEN_CMD = open
 CHECK_LIB = -lcheck
 else

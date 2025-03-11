@@ -175,24 +175,31 @@ s21_decimal s21_trim_trailing_zeros(s21_decimal value) {
         s21_decimal DECIMAL_TEN = { .bits = {10, 0, 0, 0} };
         while (scale > 0 && s21_are_all_bits_zero(ost)) {
             s21_div(tmp, DECIMAL_TEN, &tmp);
-            s21_truncate(tmp, &ost);
-            s21_sub(tmp, ost, &ost);
+            s21_ostatok(tmp, &ost);
             if (s21_are_all_bits_zero(ost)) {
                 --scale;
                 result = tmp;
             }
         }
     }
+    result.bits[3] = value.bits[3];
+    s21_set_scale(&result, scale);
     return result;
 }
 
-void s21_div_by_10(int power, s21_decimal value, s21_decimal *result) {
+void s21_div_by_10(uint32_t power, s21_decimal value, s21_decimal *result) {
+    int num = value.bits[0] % (uint32_t)pow(10, power);
+    s21_decimal acc;
+    s21_from_int_to_decimal(num, &acc);
+    s21_sub(value, acc, result);
+    s21_decimal ten = { .bits = {10, 0, 0, 0} };
     for (int i = 0; i < power; i++) {
-        int num = value.bits[0] % 10;
-        s21_decimal acc;
-        s21_from_int_to_decimal(num, &acc);
-        if (s21_sub(value, acc, result) != 0) break;
-        s21_decimal ten = { .bits = {10, 0, 0, 0} };
-        if (s21_div(*result, ten, result) != 0) break;
+        s21_div(*result, ten, result);
     }
+}
+
+void s21_ostatok(s21_decimal value, s21_decimal *result) {
+    uint32_t power = s21_get_scale(value);
+    int num = value.bits[0] % (uint32_t)pow(10, power);
+    s21_from_int_to_decimal(num, result);
 }
