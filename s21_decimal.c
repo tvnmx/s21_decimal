@@ -19,6 +19,9 @@ int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
         if (carry) {
             error = sign1 == 0 ? 1 : 2;
         }
+        if (sign1 == 1) {
+            s21_set_sign(result, 1);
+        }
     } else {
         s21_decimal abs_value_1 = value_1;
         s21_decimal abs_value_2 = value_2;
@@ -49,23 +52,30 @@ int s21_sub(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
     s21_equalize_scales(&value_1, &value_2, &error);
 
     if (sign1 == sign2) {
-        uint64_t carry = 0;
+        int borrow = 0;
         if (s21_is_greater_or_equal(value_1, value_2)) {
             for (int i = 0; i < 3; i++) {
-                uint64_t sum = (uint64_t) value_1.bits[i] - value_2.bits[i] + carry;
-                result->bits[i] = (uint32_t) (sum & 0xFFFFFFFF);
-                carry = sum >> 32;
+                int64_t diff = (int64_t)value_1.bits[i] - value_2.bits[i] - borrow;
+                if (diff < 0) {
+                    borrow = 1;
+                    diff += (1LL << 32);
+                } else {
+                    borrow = 0;
+                }
+                result->bits[i] = (uint32_t)diff;
             }
         } else {
             for (int i = 0; i < 3; i++) {
-                uint64_t sum = (uint64_t) value_2.bits[i] - value_1.bits[i] + carry;
-                result->bits[i] = (uint32_t) (sum & 0xFFFFFFFF);
-                carry = sum >> 32;
+                int64_t diff = (int64_t)value_2.bits[i] - value_1.bits[i] - borrow;
+                if (diff < 0) {
+                    borrow = 1;
+                    diff += (1LL << 32);
+                } else {
+                    borrow = 0;
+                }
+                result->bits[i] = (uint32_t)diff;
             }
-            result->bits[3] ^= 0x80000000;
-        }
-        if (carry) {
-            error = sign1 == 0 ? 1 : 2;
+            result->bits[3] = 0x80000000;  // Устанавливаем знак отрицательного числа
         }
     } else {
         s21_decimal abs_value_1 = value_1;
@@ -394,18 +404,12 @@ int s21_round(s21_decimal value, s21_decimal *result) {
 }
 
 //int main() {
-//    s21_decimal a = {{314, 0, 0, 2 << 16}};
-//    s21_decimal c = {{5,0,0,1 << 16}};
-//
-//    s21_set_sign(&a, 1);
+//    s21_decimal a = {{3, 0, 0, 0}};
+//    s21_decimal b = {{5, 0, 0, 0}};
 //    s21_decimal result = {{0, 0, 0, 0}};
-//    int res = s21_round(a, &result);
-//    if (res == 0) {
-//        printf("%s", "yo");
-//    }
-//    int b;
-//    s21_from_decimal_to_int(result, &b);
-//    printf("%d", b);
+//
+//    int res = s21_sub(a, b, &result);
+//    s21_print_decimal(result);
 //
 //    return 0;
 //}
