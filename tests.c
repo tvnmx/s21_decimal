@@ -30,8 +30,9 @@ START_TEST(test_s21_add_positive) {
 END_TEST
 
 START_TEST(test_s21_add_negative) {
-    s21_decimal a = {{5, 0, 0, 1 << 31}};
-    s21_decimal b = {{10, 0, 0, 1 << 31}};
+    uint32_t sign_bit = (uint32_t)1 << 31;
+    s21_decimal a = {{5, 0, 0, sign_bit}};
+    s21_decimal b = {{10, 0, 0, sign_bit}};
     s21_decimal result = {{0, 0, 0, 0}};
 
     int res = s21_add(a, b, &result);
@@ -106,7 +107,8 @@ START_TEST(test_s21_sub_basic) {
 END_TEST
 
 START_TEST(test_s21_sub_underflow) {
-    s21_decimal a = {{UINT32_MAX, UINT32_MAX, UINT32_MAX, 1<<31}};
+    uint32_t sign_bit = (uint32_t)1 << 31;
+    s21_decimal a = {{UINT32_MAX, UINT32_MAX, UINT32_MAX, sign_bit}};
     s21_decimal b = {{1, 0, 0, 1}};
     s21_decimal result = {{0, 0, 0, 0}};
 
@@ -499,15 +501,16 @@ START_TEST(test_s21_mul_overflow) {
 END_TEST
 
 START_TEST(test_s21_mul_negative_result) {
+    uint32_t sign_bit = (uint32_t)1 << 31;
     s21_decimal a = {{2, 0, 0, 0}};
-    s21_decimal b = {{3, 0, 0, (1 << 31)}};
+    s21_decimal b = {{3, 0, 0, sign_bit}};
     s21_decimal result = {{0, 0, 0, 0}};
 
     int res = s21_mul(a, b, &result);
 
     ck_assert_int_eq(res, 0);
     ck_assert_int_eq(result.bits[0], 6);
-    ck_assert_int_eq((uint32_t) result.bits[3] & (1 << 31), (uint32_t) (1 << 31));
+    ck_assert_int_eq((uint32_t) result.bits[3] & sign_bit, sign_bit);
 }
 END_TEST
 
@@ -535,15 +538,16 @@ START_TEST(test_s21_div_by_zero) {
 END_TEST
 
 START_TEST(test_s21_div_negative_result) {
+    uint32_t sign_bit = (uint32_t)1 << 31;
     s21_decimal a = {{6, 0, 0, 0}};
-    s21_decimal b = {{2, 0, 0, 1 << 31}};
+    s21_decimal b = {{2, 0, 0, sign_bit}};
     s21_decimal result = {{0, 0, 0, 0}};
 
     int res = s21_div(a, b, &result);
 
     ck_assert_int_eq(res, 0);
     ck_assert_int_eq(result.bits[0], 3);
-    ck_assert_int_eq((uint32_t) result.bits[3] & (1 << 31), (uint32_t) (1 << 31));
+    ck_assert_int_eq((uint32_t) result.bits[3] & sign_bit, sign_bit);
 }
 END_TEST
 
@@ -641,6 +645,7 @@ START_TEST(test_s21_truncate) {
 END_TEST
 
 START_TEST(test_s21_negate) {
+    uint32_t sign_bit = (uint32_t)1 << 31;
     s21_decimal a = {{314, 0, 0, (3 << 16)}};
     s21_decimal result = {{0, 0, 0, 0}};
 
@@ -648,7 +653,7 @@ START_TEST(test_s21_negate) {
 
     ck_assert_int_eq(res, 0);
     ck_assert_int_eq(result.bits[0], 314);
-    ck_assert_int_eq((uint32_t) result.bits[3] & (1 << 31), (uint32_t) (1 << 31));
+    ck_assert_int_eq((uint32_t) result.bits[3] & sign_bit, sign_bit);
 }
 END_TEST
 

@@ -1,5 +1,84 @@
 #include "helpers.h"
 
+void s21_add_with_equal_signs(int *error, s21_decimal *result, s21_decimal value_1, s21_decimal value_2) {
+    uint64_t carry = 0;
+    uint32_t sign1 = s21_get_sign(value_1);
+    for (int i = 0; i < 3; i++) {
+        uint64_t sum = (uint64_t)value_1.bits[i] + value_2.bits[i] + carry;
+        result->bits[i] = (uint32_t)(sum & 0xFFFFFFFF);
+        carry = sum >> 32;
+    }
+    if (carry) {
+        *error = sign1 == 0 ? 1 : 2;
+    }
+    if (sign1 == 1) {
+        s21_set_sign(result, 1);
+    }
+}
+
+void s21_add_with_diff_signs(int *error, s21_decimal *result, s21_decimal value_1, s21_decimal value_2) {
+    s21_decimal abs_value_1 = value_1;
+    s21_decimal abs_value_2 = value_2;
+
+    abs_value_1.bits[3] &= 0x7FFFFFFF;
+    abs_value_2.bits[3] &= 0x7FFFFFFF;
+
+    if (s21_is_greater_or_equal(abs_value_1, abs_value_2)) {
+        value_2.bits[3] ^= 0x80000000;
+        *error = s21_sub(value_1, value_2, result);
+    } else {
+        value_1.bits[3] ^= 0x80000000;
+        *error = s21_sub(value_2, value_1, result);
+        result->bits[3] ^= 0x80000000;
+    }
+}
+
+void s21_sub_with_equal_signs(s21_decimal *result, s21_decimal value_1, s21_decimal value_2) {
+    int borrow = 0;
+    if (s21_is_greater_or_equal(value_1, value_2)) {
+        for (int i = 0; i < 3; i++) {
+            int64_t diff = (int64_t) value_1.bits[i] - value_2.bits[i] - borrow;
+            if (diff < 0) {
+                borrow = 1;
+                diff += (1LL << 32);
+            } else {
+                borrow = 0;
+            }
+            result->bits[i] = (uint32_t) diff;
+        }
+    } else {
+        for (int i = 0; i < 3; i++) {
+            int64_t diff = (int64_t) value_2.bits[i] - value_1.bits[i] - borrow;
+            if (diff < 0) {
+                borrow = 1;
+                diff += (1LL << 32);
+            } else {
+                borrow = 0;
+            }
+            result->bits[i] = (uint32_t) diff;
+        }
+        result->bits[3] = 0x80000000;
+    }
+}
+
+void s21_sub_with_diff_signs(int *error, s21_decimal *result, s21_decimal value_1, s21_decimal value_2) {
+    s21_decimal abs_value_1 = value_1;
+    s21_decimal abs_value_2 = value_2;
+
+    abs_value_1.bits[3] &= 0x7FFFFFFF;
+    abs_value_2.bits[3] &= 0x7FFFFFFF;
+
+    if (s21_is_greater_or_equal(abs_value_1, abs_value_2)) {
+        value_2.bits[3] ^= 0x80000000;
+        *error = s21_add(value_1, value_2, result);
+    } else {
+        value_1.bits[3] ^= 0x80000000;
+        *error = s21_add(value_2, value_1, result);
+        result->bits[3] ^= 0x80000000;
+    }
+    s21_set_sign(result, 1);
+}
+
 int s21_get_bit(s21_decimal value, int index) {
     uint32_t bit_position = index % 32;
     uint32_t word_index = index / 32;
@@ -112,10 +191,12 @@ void s21_decimal_zero(s21_decimal *dst) {
 }
 
 void s21_set_sign(s21_decimal *dst, uint32_t sign) {
+    uint32_t sign_bit = (uint32_t)1 << 31;
+
     if (sign) {
-        dst->bits[3] |= (1 << 31);
+        dst->bits[3] |= sign_bit;
     } else {
-        dst->bits[3] &= ~(1 << 31);
+        dst->bits[3] &= ~sign_bit;
     }
 }
 
@@ -129,7 +210,7 @@ void s21_set_scale(s21_decimal *decimal, uint32_t scale) {
 void s21_print_decimal(s21_decimal dec) {
     for (int i = 3; i >= 0; i--) {
         for (int j = 31; j >= 0; j--) {
-            printf("%d", (dec.bits[i] >> j) & 1);
+            printf("%u", (dec.bits[i] >> j) & 1);
             if (j % 4 == 0) printf(" ");
         }
         printf("\n");
@@ -141,13 +222,6 @@ void s21_dec_assignment(s21_decimal value, s21_decimal *result) {
     result->bits[1] = value.bits[1];
     result->bits[2] = value.bits[2];
     result->bits[3] = value.bits[3];
-}
-
-void s21_abs(s21_decimal value, s21_decimal *result) {
-    s21_dec_assignment(value, result);
-    if (result->bits[3] & (1 << 31)) {
-        result->bits[3] &= ~(1 << 31);
-    }
 }
 
 bool s21_is_valid_decimal(s21_decimal value) {
