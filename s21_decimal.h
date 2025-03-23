@@ -2,25 +2,24 @@
 #define S21_DECIMAL_H
 
 #include <ctype.h>
+#include <math.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
-#include <math.h>
 
-typedef struct
-{
-    uint32_t bits[4];
+typedef struct {
+  uint32_t bits[4];
 } s21_decimal;
 
 typedef union decimal_bit3 {
-    uint32_t i;
-    struct {
-        uint32_t empty2 : 16;
-        uint32_t scale : 8;
-        uint32_t empty1 : 7;
-        uint32_t sign : 1;
-    } parts;
+  uint32_t i;
+  struct {
+    uint32_t empty2 : 16;
+    uint32_t scale : 8;
+    uint32_t empty1 : 7;
+    uint32_t sign : 1;
+  } parts;
 } decimal_bit3;
 
 int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result);
