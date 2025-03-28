@@ -98,8 +98,8 @@ void s21_set_bit(s21_decimal *value, int index, int bit) {
     value->bits[word_index] &= ~(1U << bit_position);
 }
 
-int div_support(s21_decimal *remainder, s21_decimal divisible,
-                s21_decimal divisor, s21_decimal *quotient) {
+int s21_div_support(s21_decimal *remainder, s21_decimal divisible,
+                    s21_decimal divisor, s21_decimal *quotient) {
   *remainder = (s21_decimal){{0, 0, 0, 0}};
   *quotient = (s21_decimal){{0, 0, 0, 0}};
 
@@ -117,13 +117,53 @@ int div_support(s21_decimal *remainder, s21_decimal divisible,
   return 0;
 }
 
-void s21_shift_left(s21_decimal *value) {
-  unsigned int carry = 0;
-  for (int i = 0; i < 3; i++) {
-    unsigned int next_carry = (value->bits[i] >> 31) & 1;
-    value->bits[i] = (value->bits[i] << 1) | carry;
-    carry = next_carry;
-  }
+void div_bank_round(s21_decimal *quotient, s21_decimal *fractional, int *fractional_scale, s21_decimal *divisor, s21_decimal remainder) {
+    s21_decimal zero = {{0, 0, 0, 0}};
+    s21_decimal one = {{1, 0, 0, 0}};
+    s21_decimal two = {{2, 0, 0, 0}};
+    s21_decimal five = {{5, 0, 0, 0}};
+    uint64_t chislo = (uint64_t) quotient->bits[0] + (uint64_t) fractional->bits[0];
+    s21_decimal rem_for_round = remainder, scaled_int = *quotient;
+    if (chislo <= UINT32_MAX) {
+        for (int i = 0; i < *fractional_scale; i++) {
+            s21_multiply_by_10(&scaled_int);
+        }
+        s21_add(scaled_int, *fractional, quotient);
+    } else {
+        (*fractional_scale)--;
+    }
+    if ((*fractional_scale == 28 && !s21_is_equal(remainder, zero)) || chislo > UINT32_MAX) {
+        if (s21_is_equal(remainder, zero) && (s21_is_greater(*fractional, five) ||
+                                              (s21_is_equal(*fractional, five) && quotient->bits[0] % 2 == 1))) {
+            s21_add(*quotient, one, quotient);
+        } else {
+            s21_mul(rem_for_round, two, &rem_for_round);
+            if (s21_is_greater(rem_for_round, *divisor) ||
+                (s21_is_equal(rem_for_round, *divisor) && quotient->bits[0] % 2 == 1)) {
+                s21_add(*quotient, one, quotient);
+            }
+        }
+    }
+}
+
+void s21_print_decimal(s21_decimal dec) {
+    for (int i = 3; i >= 0; i--) {
+        for (int j = 31; j >= 0; j--) {
+            printf("%u", (dec.bits[i] >> j) & 1);
+            if (j % 4 == 0) printf(" ");
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
+void s21_shift_left(s21_decimal *val) {
+    uint32_t carry = 0;
+    for (int i = 0; i < 3; i++) {
+        uint64_t temp = ((uint64_t)val->bits[i]) << 1 | carry;
+        val->bits[i] = (uint32_t)temp;
+        carry = (uint32_t)(temp >> 32);
+    }
 }
 
 void s21_equalize_scales(s21_decimal *value_1, s21_decimal *value_2,

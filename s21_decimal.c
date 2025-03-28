@@ -67,55 +67,45 @@ int s21_mul(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
 }
 
 int s21_div(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
-  int error = 0;
-  if ((value_2.bits[0] == 0 && value_2.bits[1] == 0 && value_2.bits[2] == 0)) {
-    error = 3;
-  } else {
-    s21_decimal max = {{0xFFFFFFFF, 0xFFFFFFFF, 0x7FFFFFFF, 0}};
-    s21_decimal divisible = value_1, divisor = value_2;
-    s21_decimal quotient = {.bits = {0, 0, 0, 0}},
-                remainder = {.bits = {0, 0, 0, 0}};
-    s21_equalize_scales(&divisible, &divisor, &error);
-    uint32_t final_scale = s21_get_scale(divisible) - s21_get_scale(divisor);
-    divisible.bits[3] = 0;
-    divisor.bits[3] = 0;
+    int error = 0;
+    if ((value_2.bits[0] == 0 && value_2.bits[1] == 0 && value_2.bits[2] == 0)) {
+        error = 3;
+    } else {
+        s21_decimal divisible = value_1, divisor = value_2;
+        s21_decimal quotient = {{0, 0, 0, 0}}, remainder = {{0, 0, 0, 0}};
+        s21_equalize_scales(&divisible, &divisor, &error);
 
-    div_support(&remainder, divisible, divisor, &quotient);
-    s21_decimal quotient2 = {.bits = {0, 0, 0, 0}};
-    s21_decimal five = {.bits = {5, 0, 0, 0}}, one = {.bits = {1, 0, 0, 0}};
-    int cnt = 1, scale = 0;
-    while ((remainder.bits[0] != 0 || remainder.bits[1] != 0 ||
-            remainder.bits[2] != 0) &&
-           scale < 28) {
-      cnt++;
-      s21_multiply_by_10(&remainder);
-      s21_decimal digit = {.bits = {0, 0, 0, 0}};
-      div_support(&digit, remainder, divisor, &quotient2);
-      quotient2.bits[0] |= (digit.bits[0] & 1);
-      if (((s21_is_equal(quotient, max) || s21_get_bit(quotient, 95)) &&
-           s21_is_equal(quotient2, five)) ||
-          s21_is_greater(quotient2, five)) {
-        s21_add(quotient, one, &quotient);
-      } else {
-        s21_multiply_by_10(&quotient);
-        s21_add(quotient, quotient2, &quotient);
-      }
-      scale++;
-      remainder.bits[0] = digit.bits[0];
-      remainder.bits[1] = digit.bits[1];
-      remainder.bits[2] = digit.bits[2];
-    }
+        uint32_t initial_scale = s21_get_scale(divisible) - s21_get_scale(divisor);
 
-    final_scale = (uint32_t)fmax(scale, final_scale);
-    if (final_scale > 28) {
-      final_scale = 28;
+        divisible.bits[3] = 0;
+        divisor.bits[3] = 0;
+
+        s21_div_support(&remainder, divisible, divisor, &quotient);
+        int fractional_scale = 0;
+
+        s21_decimal fractional = {{0, 0, 0, 0}};
+        s21_decimal digit = {{0, 0, 0, 0}};
+        s21_decimal temp = {{0, 0, 0, 0}};
+
+        while ((remainder.bits[0] != 0 || remainder.bits[1] != 0 ||
+                remainder.bits[2] != 0) && fractional_scale < 28) {
+            s21_multiply_by_10(&remainder);
+            s21_div_support(&temp, remainder, divisor, &digit);
+            remainder.bits[0] = temp.bits[0];
+            remainder.bits[1] = temp.bits[1];
+            remainder.bits[2] = temp.bits[2];
+            s21_multiply_by_10(&fractional);
+            s21_add(fractional, digit, &fractional);
+            fractional_scale++;
+        }
+        div_bank_round(&quotient, &fractional, &fractional_scale, &divisor, remainder);
+        uint32_t final_scale = initial_scale + fractional_scale > 28 ? 28 : initial_scale + fractional_scale;
+        s21_set_scale(&quotient, final_scale);
+        s21_set_sign(&quotient,
+                     ((value_1.bits[3] >> 31) ^ (value_2.bits[3] >> 31)) & 1);
+        *result = quotient;
     }
-    s21_set_scale(&quotient, final_scale);
-    s21_set_sign(&quotient,
-                 ((value_1.bits[3] >> 31) ^ (value_2.bits[3] >> 31)) & 1);
-    *result = quotient;
-  }
-  return error;
+    return error;
 }
 
 int s21_is_less(s21_decimal a, s21_decimal b) { return s21_is_greater(b, a); }
@@ -320,3 +310,12 @@ int s21_round(s21_decimal value, s21_decimal *result) {
   }
   return res;
 }
+
+//int main() {
+//    s21_decimal a = {{2, 0, 0, 0}};
+//    s21_decimal b = {{3, 0, 0, 0}};
+//    s21_decimal result = {{0, 0, 0, 0}};
+//
+//    int res = s21_div(a, b, &result);
+//    s21_print_decimal(result);
+//}

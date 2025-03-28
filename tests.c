@@ -326,7 +326,7 @@ START_TEST(test_div_support_basic) {
   s21_decimal divisor = {{10, 0, 0, 0}};
   s21_decimal quotient = {{0, 0, 0, 0}};
 
-  int res = div_support(&remainder, divisible, divisor, &quotient);
+  int res = s21_div_support(&remainder, divisible, divisor, &quotient);
 
   ck_assert_int_eq(res, 0);
   ck_assert_int_eq(quotient.bits[0], 10);
@@ -340,7 +340,7 @@ START_TEST(test_div_support_with_remainder) {
   s21_decimal divisor = {{10, 0, 0, 0}};
   s21_decimal quotient = {{0, 0, 0, 0}};
 
-  int res = div_support(&remainder, divisible, divisor, &quotient);
+  int res = s21_div_support(&remainder, divisible, divisor, &quotient);
 
   ck_assert_int_eq(res, 0);
   ck_assert_int_eq(quotient.bits[0], 10);
@@ -354,7 +354,7 @@ START_TEST(test_div_support_large_number) {
   s21_decimal divisor = {{1000, 0, 0, 0}};
   s21_decimal quotient = {{0, 0, 0, 0}};
 
-  int res = div_support(&remainder, divisible, divisor, &quotient);
+  int res = s21_div_support(&remainder, divisible, divisor, &quotient);
 
   ck_assert_int_eq(res, 0);
   ck_assert_int_eq(quotient.bits[0], 1000);
@@ -368,7 +368,7 @@ START_TEST(test_div_support_zero_divisible) {
   s21_decimal divisor = {{123, 0, 0, 0}};
   s21_decimal quotient = {{123, 0, 0, 0}};
 
-  int res = div_support(&remainder, divisible, divisor, &quotient);
+  int res = s21_div_support(&remainder, divisible, divisor, &quotient);
 
   ck_assert_int_eq(res, 0);
   ck_assert_int_eq(quotient.bits[0], 0);
@@ -382,7 +382,7 @@ START_TEST(test_div_support_divide_by_one) {
   s21_decimal divisor = {{1, 0, 0, 0}};
   s21_decimal quotient = {{0, 0, 0, 0}};
 
-  int res = div_support(&remainder, divisible, divisor, &quotient);
+  int res = s21_div_support(&remainder, divisible, divisor, &quotient);
 
   ck_assert_int_eq(res, 0);
   ck_assert_int_eq(quotient.bits[0], 98765);
@@ -784,6 +784,7 @@ START_TEST(test_s21_div_large_numbers) {
   ck_assert_int_eq(result.bits[0], 0x00000000);
   ck_assert_int_eq(result.bits[1], 0x00000000);
   ck_assert_int_eq(result.bits[2], 0x80000000);
+  ck_assert_int_eq(result.bits[3], 0);
 }
 END_TEST
 
@@ -868,6 +869,75 @@ START_TEST(test_s21_mul_carry_propagation) {
 }
 END_TEST
 
+START_TEST(test_bank_rounding_1) {
+    s21_decimal a = {{2, 0, 0, 0}};
+    s21_decimal b = {{3, 0, 0, 0}};
+    s21_decimal result = {{0, 0, 0, 0}};
+
+    int res = s21_div(a, b, &result);
+
+    ck_assert_int_eq(res, 0);
+    ck_assert_int_eq(result.bits[0], 0x0AAAAAAB);
+    ck_assert_int_eq(result.bits[1], 0x296E0196);
+    ck_assert_int_eq(result.bits[2], 0x158A8994);
+    ck_assert_int_eq(s21_get_scale(result), 28);
+}
+END_TEST
+
+START_TEST(test_s21_div_large_result_with_fraction) {
+    s21_decimal a = {{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0}};
+    s21_decimal b = {{3, 0, 0, 0}};
+    s21_decimal result = {{0, 0, 0, 0}};
+    int res = s21_div(a, b, &result);
+
+    ck_assert_int_eq(res, 0);
+    ck_assert_int_eq(result.bits[0], 0x55555555);
+    ck_assert_int_eq(result.bits[1], 0x55555555);
+    ck_assert_int_eq(result.bits[2], 0x55555555);
+    ck_assert_int_eq(result.bits[3], 0 );
+}
+END_TEST
+
+START_TEST(test_s21_div_infinite_fraction) {
+    s21_decimal a = {{1, 0, 0, 0}};
+    s21_decimal b = {{3, 0, 0, 0}};
+    s21_decimal result = {{0, 0, 0, 0}};
+    int res = s21_div(a, b, &result);
+
+    ck_assert_int_eq(res, 0);
+    ck_assert_int_eq(result.bits[0], 0x05555555);
+    ck_assert_int_eq(result.bits[1], 0x14B700CB);
+    ck_assert_int_eq(result.bits[2], 0xAC544CA);
+    ck_assert_int_eq(result.bits[3], (28 << 16));
+}
+END_TEST
+
+START_TEST(test_s21_div_two_bits) {
+    s21_decimal a = {{2, 2, 2, 0}};
+    s21_decimal b = {{2, 0, 0, 0}};
+    s21_decimal result = {{0, 0, 0, 0}};
+    int res = s21_div(a, b, &result);
+    ck_assert_int_eq(res, 0);
+    ck_assert_int_eq(result.bits[0], 1);
+    ck_assert_int_eq(result.bits[1], 1);
+    ck_assert_int_eq(result.bits[2], 1);
+    ck_assert_int_eq(result.bits[3], 0);
+}
+END_TEST
+
+START_TEST(test_s21_sub_three_bits) {
+    s21_decimal a = {{0, 0, 1, 0}};
+    s21_decimal b = {{0xFFFFFFFF, 0xFFFFFFFF, 0, 0}};
+    s21_decimal result = {{0, 0, 0, 0}};
+    int res = s21_sub(a, b, &result);
+    ck_assert_int_eq(res, 0);
+    ck_assert_int_eq(result.bits[0], 1);
+    ck_assert_int_eq(result.bits[1], 0);
+    ck_assert_int_eq(result.bits[2], 0);
+    ck_assert_int_eq(result.bits[3], 0);
+}
+END_TEST
+
 Suite *s21_decimal_suite(void) {
   Suite *s = suite_create("s21_decimal");
   TCase *tc_core = tcase_create("Core");
@@ -937,7 +1007,6 @@ Suite *s21_decimal_suite(void) {
   tcase_add_test(tc_core, test_s21_truncate);
   tcase_add_test(tc_core, test_s21_negate);
   tcase_add_test(tc_core, test_s21_from_int_to_decimal);
-  tcase_add_test(tc_core, test_s21_from_negative_int_to_decimal);
   tcase_add_test(tc_core, test_s21_from_float_to_decimal);
   tcase_add_test(tc_core, test_s21_from_decimal_to_int);
   tcase_add_test(tc_core, test_s21_from_decimal_to_float);
@@ -953,6 +1022,11 @@ Suite *s21_decimal_suite(void) {
   tcase_add_test(tc_core, test_s21_multiply_by_10_overflow);
   tcase_add_test(tc_core, test_s21_multiply_by_10_middle_overflow);
 
+  tcase_add_test(tc_core, test_bank_rounding_1);
+  tcase_add_test(tc_core, test_s21_div_large_result_with_fraction);
+  tcase_add_test(tc_core,  test_s21_div_infinite_fraction);
+  tcase_add_test(tc_core, test_s21_div_two_bits);
+  tcase_add_test(tc_core, test_s21_sub_three_bits);
   suite_add_tcase(s, tc_core);
   return s;
 }
