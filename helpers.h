@@ -3,6 +3,7 @@
 
 #include "s21_decimal.h"
 
+s21_decimal s21_get_fr_part(s21_decimal value);
 void div_bank_round(s21_decimal *quotient, s21_decimal *fractional, int *fractional_scale, s21_decimal *divisor, s21_decimal remainder);
 void s21_print_decimal(s21_decimal dec);
 void s21_add_with_equal_signs(int *error, s21_decimal *result,

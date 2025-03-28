@@ -938,6 +938,18 @@ START_TEST(test_s21_sub_three_bits) {
 }
 END_TEST
 
+START_TEST(test_bank_rounding_sum) {
+    s21_decimal a = {{0xFFFFFFFE, 0xFFFFFFFF, 0xFFFFFFFF, 0}};
+    s21_decimal b = {{0, 0, 5, 1 << 16}};
+    s21_decimal result = {{0, 0, 0, 0}};
+    int res = s21_add(a, b, &result);
+    ck_assert_int_eq(res, 0);
+    ck_assert_int_eq(result.bits[0], 0xFFFFFFFE);
+    ck_assert_int_eq(result.bits[1], 0xFFFFFFFF);
+    ck_assert_int_eq(result.bits[2], 0xFFFFFFFF);
+    ck_assert_int_eq(result.bits[3], 0);
+}
+
 Suite *s21_decimal_suite(void) {
   Suite *s = suite_create("s21_decimal");
   TCase *tc_core = tcase_create("Core");
@@ -1027,18 +1039,19 @@ Suite *s21_decimal_suite(void) {
   tcase_add_test(tc_core,  test_s21_div_infinite_fraction);
   tcase_add_test(tc_core, test_s21_div_two_bits);
   tcase_add_test(tc_core, test_s21_sub_three_bits);
+  tcase_add_test(tc_core, test_bank_rounding_sum);
   suite_add_tcase(s, tc_core);
   return s;
 }
 
-int main(void) {
-  int number_failed;
-  Suite *s = s21_decimal_suite();
-  SRunner *sr = srunner_create(s);
-
-  srunner_run_all(sr, CK_NORMAL);
-  number_failed = srunner_ntests_failed(sr);
-  srunner_free(sr);
-
-  return (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-}
+//int main(void) {
+//  int number_failed;
+//  Suite *s = s21_decimal_suite();
+//  SRunner *sr = srunner_create(s);
+//
+//  srunner_run_all(sr, CK_NORMAL);
+//  number_failed = srunner_ntests_failed(sr);
+//  srunner_free(sr);
+//
+//  return (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
+//}

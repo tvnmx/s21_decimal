@@ -1,5 +1,18 @@
 #include "helpers.h"
 
+s21_decimal s21_get_fr_part(s21_decimal value) {
+    s21_decimal result = {{0, 0, 0, 0}};
+    uint32_t scale = s21_get_scale(value);
+    s21_set_scale(&result, scale);
+    if (scale == 0) {
+        s21_decimal int_part = {{0, 0, 0, 0}};
+        s21_truncate(value, &int_part);
+        s21_sub(value, int_part, &result);
+    }
+
+    return result;
+}
+
 void s21_add_with_equal_signs(int *error, s21_decimal *result,
                               s21_decimal value_1, s21_decimal value_2) {
   uint64_t carry = 0;
@@ -9,10 +22,10 @@ void s21_add_with_equal_signs(int *error, s21_decimal *result,
     result->bits[i] = (uint32_t)(sum & 0xFFFFFFFF);
     carry = sum >> 32;
   }
-  if (carry) {
+  if (carry && !s21_get_scale(value_1)) {
     *error = sign1 == 0 ? 1 : 2;
   }
-  if (sign1 == 1) {
+  if (sign1) {
     s21_set_sign(result, 1);
   }
 }
