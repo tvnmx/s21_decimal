@@ -940,7 +940,7 @@ END_TEST
 
 START_TEST(test_bank_rounding_sum) {
     s21_decimal a = {{0xFFFFFFFE, 0xFFFFFFFF, 0xFFFFFFFF, 0}};
-    s21_decimal b = {{0, 0, 5, 1 << 16}};
+    s21_decimal b = {{5, 0, 0, 1 << 16}};
     s21_decimal result = {{0, 0, 0, 0}};
     int res = s21_add(a, b, &result);
     ck_assert_int_eq(res, 0);
@@ -950,9 +950,98 @@ START_TEST(test_bank_rounding_sum) {
     ck_assert_int_eq(result.bits[3], 0);
 }
 
+START_TEST(test_add_rounding_max) {
+    s21_decimal a = {{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0}};
+    s21_decimal b = {{5, 0, 0, 1 << 16}};
+    s21_decimal result = {{0, 0, 0, 0}};
+    int res = s21_add(a, b, &result);
+    ck_assert_int_eq(res, 1);
+}
+
+START_TEST(test_add_rounding_min) {
+    s21_decimal a = {{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 1 << 31}};
+    s21_decimal b = {{5, 0, 0, 1 << 16 | 1 << 31}};
+    s21_decimal result = {{0, 0, 0, 0}};
+    int res = s21_add(a, b, &result);
+    ck_assert_int_eq(res, 1);
+}
+
+START_TEST(test_add_rounding_with_extra_one) {
+    s21_decimal a = {{9, 0, 0,  1 << 16}};
+    s21_decimal b = {{9, 0, 0, 1 << 16}};
+    s21_decimal result = {{0, 0, 0, 0}};
+    int res = s21_add(a, b, &result);
+    ck_assert_int_eq(res, 0);
+    ck_assert_int_eq(result.bits[0], 18);
+    ck_assert_int_eq(result.bits[1], 0);
+    ck_assert_int_eq(result.bits[2], 0);
+    ck_assert_int_eq(result.bits[3], 1 << 16);
+}
+
+START_TEST(test_s21_add_banking_1) {
+        s21_decimal a = {{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0}};
+        s21_decimal b = {{6, 0, 0, 0x80000000 | 1<<16}};
+        s21_decimal result = {{0, 0, 0, 0}};
+        int res = s21_add(a, b, &result);
+        ck_assert_int_eq(res, 0);
+        ck_assert_int_eq(result.bits[0], 0xFFFFFFFE);
+        ck_assert_int_eq(result.bits[1], 0xFFFFFFFF);
+        ck_assert_int_eq(result.bits[2], 0xFFFFFFFF);
+        ck_assert_int_eq(result.bits[3], 0);
+}
+END_TEST
+START_TEST(test_s21_add_banking_2) {
+    s21_decimal a = {{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0}};
+    s21_decimal b = {{2, 0, 0, 0x80000000 | 1<<16}};
+    s21_decimal result = {{0, 0, 0, 0}};
+    int res = s21_add(a, b, &result);
+
+    ck_assert_int_eq(res, 0);
+    ck_assert_int_eq(result.bits[0], 0xFFFFFFFF);
+    ck_assert_int_eq(result.bits[1], 0xFFFFFFFF);
+    ck_assert_int_eq(result.bits[2], 0xFFFFFFFF);
+    ck_assert_int_eq(result.bits[3], 0);
+}
+END_TEST
+START_TEST(test_s21_add_banking_3) {
+    s21_decimal a = {{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x80000000}};
+    s21_decimal b = {{1, 0, 0,  2<<16}};
+    s21_decimal result = {{0, 0, 0, 0}};
+    int res = s21_add(a, b, &result);
+
+    ck_assert_int_eq(res, 0);
+    ck_assert_int_eq(result.bits[0], 0xFFFFFFFF);
+    ck_assert_int_eq(result.bits[1], 0xFFFFFFFF);
+    ck_assert_int_eq(result.bits[2], 0xFFFFFFFF);
+    ck_assert_int_eq(result.bits[3], 0x80000000);
+}
+END_TEST
+
+START_TEST(test_s21_add_banking_4) {
+    s21_decimal a = {{5, 0, 0, 28 << 16}};
+    s21_decimal b = {{0xFFFFFFF0, 0xFFFFFFFF, 0xFFFFFFFF, 28 << 16}};
+    s21_decimal result = {{0, 0, 0, 0}};
+    int res = s21_add(a, b, &result);
+
+    ck_assert_int_eq(res, 0);
+    ck_assert_int_eq(result.bits[0], 0xFFFFFFF5);
+    ck_assert_int_eq(result.bits[1], 0xFFFFFFFF);
+    ck_assert_int_eq(result.bits[2], 0xFFFFFFFF);
+    ck_assert_int_eq(result.bits[3], 28 << 16);
+}
+END_TEST
+
 Suite *s21_decimal_suite(void) {
   Suite *s = suite_create("s21_decimal");
   TCase *tc_core = tcase_create("Core");
+
+    tcase_add_test(tc_core, test_add_rounding_max);
+    tcase_add_test(tc_core, test_add_rounding_min);
+    tcase_add_test(tc_core, test_add_rounding_with_extra_one);
+    tcase_add_test(tc_core, test_s21_add_banking_1);
+    tcase_add_test(tc_core, test_s21_add_banking_2);
+    tcase_add_test(tc_core, test_s21_add_banking_3);
+    tcase_add_test(tc_core, test_s21_add_banking_4);
   tcase_add_test(tc_core, test_s21_mul_carry_propagation);
   tcase_add_test(tc_core, test_s21_equalize_scales_same_scale);
   tcase_add_test(tc_core, test_s21_equalize_scales_increase_scale_1);
@@ -1044,14 +1133,14 @@ Suite *s21_decimal_suite(void) {
   return s;
 }
 
-//int main(void) {
-//  int number_failed;
-//  Suite *s = s21_decimal_suite();
-//  SRunner *sr = srunner_create(s);
-//
-//  srunner_run_all(sr, CK_NORMAL);
-//  number_failed = srunner_ntests_failed(sr);
-//  srunner_free(sr);
-//
-//  return (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-//}
+int main(void) {
+  int number_failed;
+  Suite *s = s21_decimal_suite();
+  SRunner *sr = srunner_create(s);
+
+  srunner_run_all(sr, CK_NORMAL);
+  number_failed = srunner_ntests_failed(sr);
+  srunner_free(sr);
+
+  return (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
+}

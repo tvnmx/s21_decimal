@@ -1,33 +1,67 @@
 #include "helpers.h"
 
+void s21_add_with_rounding(s21_decimal value_1, s21_decimal value_2, int *error, s21_decimal *result) {
+    s21_decimal int_part_1 = {{0, 0, 0, 0}}, int_part_2 = {{0, 0, 0, 0}}, sum_fr_part = {{0, 0, 0, 0}}, int_part_from_sum_fr_part = {{0, 0, 0, 0}};
+    s21_decimal fr_part_1 = s21_get_fr_part(value_1);
+    s21_decimal fr_part_2 = s21_get_fr_part(value_2);
+    s21_truncate(value_1, &int_part_1);
+    s21_truncate(value_2, &int_part_2);
+    if (s21_get_sign(value_1) == s21_get_sign(value_2)) {
+        s21_add_with_equal_signs(error, &sum_fr_part, fr_part_1, fr_part_2);
+    } else {
+        s21_add_with_diff_signs(error, &sum_fr_part, fr_part_1, fr_part_2);
+    }
+    s21_decimal fr_part_for_sum_fr_part = s21_get_fr_part(sum_fr_part);
+    s21_truncate(sum_fr_part, &int_part_from_sum_fr_part);
+    if (s21_get_sign(value_1) == s21_get_sign(int_part_from_sum_fr_part)) {
+        s21_add_with_equal_signs(error, &value_1, value_1, int_part_from_sum_fr_part);
+    } else {
+        s21_add_with_diff_signs(error, &value_1, value_1, int_part_from_sum_fr_part);
+    }
+
+    if (s21_get_sign(value_1) == s21_get_sign(value_2)) {
+        s21_add_with_equal_signs(error, result, int_part_1, int_part_2);
+    } else {
+        s21_add_with_diff_signs(error, result, int_part_1, int_part_2);
+    }
+    if (!(*error) && (s21_is_greater(fr_part_for_sum_fr_part, (s21_decimal){{5, 0, 0, 1 << 16}}) || (s21_is_equal(fr_part_for_sum_fr_part, (s21_decimal){{5, 0, 0, 1 << 16}}) && result->bits[0] % 2 == 1))) {
+        if (s21_get_sign(*result)) {
+            s21_add_with_equal_signs(error, result, *result, (s21_decimal){{1, 0, 0, 1 << 31}});
+        } else {
+            s21_add_with_equal_signs(error, result, *result, (s21_decimal) {{1, 0, 0, 0}});
+        }
+    }
+}
+
 s21_decimal s21_get_fr_part(s21_decimal value) {
     s21_decimal result = {{0, 0, 0, 0}};
     uint32_t scale = s21_get_scale(value);
-    s21_set_scale(&result, scale);
-    if (scale == 0) {
+    if (scale) {
         s21_decimal int_part = {{0, 0, 0, 0}};
         s21_truncate(value, &int_part);
         s21_sub(value, int_part, &result);
     }
-
+    s21_set_scale(&result, scale);
     return result;
 }
 
 void s21_add_with_equal_signs(int *error, s21_decimal *result,
                               s21_decimal value_1, s21_decimal value_2) {
-  uint64_t carry = 0;
+    uint64_t carry = 0;
   uint32_t sign1 = s21_get_sign(value_1);
+    uint32_t max_scale = s21_get_scale(value_1) > s21_get_scale(value_2) ? s21_get_scale(value_1) : s21_get_scale(value_2);
   for (int i = 0; i < 3; i++) {
     uint64_t sum = (uint64_t)value_1.bits[i] + value_2.bits[i] + carry;
     result->bits[i] = (uint32_t)(sum & 0xFFFFFFFF);
     carry = sum >> 32;
   }
-  if (carry && !s21_get_scale(value_1)) {
+  if (carry && !max_scale) {
     *error = sign1 == 0 ? 1 : 2;
   }
   if (sign1) {
     s21_set_sign(result, 1);
   }
+    s21_set_scale(result, max_scale);
 }
 
 void s21_add_with_diff_signs(int *error, s21_decimal *result,
@@ -46,6 +80,8 @@ void s21_add_with_diff_signs(int *error, s21_decimal *result,
     *error = s21_sub(value_2, value_1, result);
     result->bits[3] ^= 0x80000000;
   }
+    uint32_t max_scale = s21_get_scale(value_1) > s21_get_scale(value_2) ? s21_get_scale(value_1) : s21_get_scale(value_2);
+    s21_set_scale(result, max_scale);
 }
 
 void s21_sub_with_equal_signs(s21_decimal *result, s21_decimal value_1,
@@ -79,12 +115,11 @@ void s21_sub_with_equal_signs(s21_decimal *result, s21_decimal value_1,
 
 void s21_sub_with_diff_signs(int *error, s21_decimal *result,
                              s21_decimal value_1, s21_decimal value_2) {
-  s21_decimal abs_value_1 = value_1;
+    s21_decimal abs_value_1 = value_1;
   s21_decimal abs_value_2 = value_2;
 
   abs_value_1.bits[3] &= 0x7FFFFFFF;
   abs_value_2.bits[3] &= 0x7FFFFFFF;
-
   if (s21_is_greater_or_equal(abs_value_1, abs_value_2)) {
     value_2.bits[3] ^= 0x80000000;
     *error = s21_add(value_1, value_2, result);
@@ -130,6 +165,8 @@ int s21_div_support(s21_decimal *remainder, s21_decimal divisible,
   return 0;
 }
 
+
+// отрицательные числа ???
 void div_bank_round(s21_decimal *quotient, s21_decimal *fractional, int *fractional_scale, s21_decimal *divisor, s21_decimal remainder) {
     s21_decimal zero = {{0, 0, 0, 0}};
     s21_decimal one = {{1, 0, 0, 0}};
@@ -137,23 +174,24 @@ void div_bank_round(s21_decimal *quotient, s21_decimal *fractional, int *fractio
     s21_decimal five = {{5, 0, 0, 0}};
     uint64_t chislo = (uint64_t) quotient->bits[0] + (uint64_t) fractional->bits[0];
     s21_decimal rem_for_round = remainder, scaled_int = *quotient;
+    int error;
     if (chislo <= UINT32_MAX) {
         for (int i = 0; i < *fractional_scale; i++) {
             s21_multiply_by_10(&scaled_int);
         }
-        s21_add(scaled_int, *fractional, quotient);
+        s21_add_with_equal_signs(&error, quotient, scaled_int, *fractional);
     } else {
         (*fractional_scale)--;
     }
     if ((*fractional_scale == 28 && !s21_is_equal(remainder, zero)) || chislo > UINT32_MAX) {
         if (s21_is_equal(remainder, zero) && (s21_is_greater(*fractional, five) ||
                                               (s21_is_equal(*fractional, five) && quotient->bits[0] % 2 == 1))) {
-            s21_add(*quotient, one, quotient);
+            s21_add_with_equal_signs(&error, quotient, *quotient, one);
         } else {
             s21_mul(rem_for_round, two, &rem_for_round);
             if (s21_is_greater(rem_for_round, *divisor) ||
                 (s21_is_equal(rem_for_round, *divisor) && quotient->bits[0] % 2 == 1)) {
-                s21_add(*quotient, one, quotient);
+                s21_add_with_equal_signs(&error, quotient, *quotient, one);
             }
         }
     }
@@ -166,6 +204,10 @@ void s21_print_decimal(s21_decimal dec) {
             if (j % 4 == 0) printf(" ");
         }
         printf("\n");
+    }
+    printf("\n");
+    for (int i = 3; i >= 0; i--) {
+        printf("bits[%d] = 0x%08X\n", i, dec.bits[i]);
     }
     printf("\n");
 }
@@ -183,17 +225,19 @@ void s21_equalize_scales(s21_decimal *value_1, s21_decimal *value_2,
                          int *error) {
   uint32_t scale1 = s21_get_scale(*value_1);
   uint32_t scale2 = s21_get_scale(*value_2);
-  while (scale1 != scale2) {
+  while (scale1 != scale2 && !(*error)) {
     if (scale1 < scale2) {
       if (s21_multiply_by_10(value_1)) {
         *error = 1;
+      } else {
+          scale1++;
       }
-      scale1++;
     } else {
       if (s21_multiply_by_10(value_2)) {
         *error = 1;
+      } else {
+          scale2++;
       }
-      scale2++;
     }
   }
   s21_set_scale(value_1, scale1);
@@ -213,21 +257,29 @@ uint32_t s21_get_scale(s21_decimal value) {
 }
 
 int s21_multiply_by_10(s21_decimal *value) {
+    s21_decimal tmp;
+    tmp.bits[0] = (uint32_t)value->bits[0];
+    tmp.bits[1] = (uint32_t)value->bits[1];
+    tmp.bits[2] = (uint32_t)value->bits[2];
   uint64_t carry = 0;
   int res = 0;
   for (int i = 0; i < 3; i++) {
-    uint64_t ans = (uint64_t)value->bits[i] * 10 + carry;
+    uint64_t ans = (uint64_t)tmp.bits[i] * 10 + carry;
 
     if (ans > 0xFFFFFFFF) {
       carry = ans >> 32;
-      value->bits[i] = (uint32_t)(ans & 0xFFFFFFFF);
+      tmp.bits[i] = (uint32_t)(ans & 0xFFFFFFFF);
     } else {
       carry = 0;
-      value->bits[i] = (uint32_t)ans;
+      tmp.bits[i] = (uint32_t)ans;
     }
   }
   if (carry != 0) {
     res = 1;
+  } else {
+      value->bits[0] = (uint32_t)tmp.bits[0];
+      value->bits[1] = (uint32_t)tmp.bits[1];
+      value->bits[2] = (uint32_t)tmp.bits[2];
   }
 
   return res;

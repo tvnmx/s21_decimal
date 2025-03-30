@@ -6,31 +6,8 @@ int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
   int error = 0;
   int not_equal_scales = 0;
   s21_equalize_scales(&value_1, &value_2, &not_equal_scales);
-    s21_decimal min_value, max_value;
-    // модуль поставить
-    if (s21_is_less(value_1, value_2)) {
-      min_value = value_1;
-      max_value = value_2;
-  } else {
-      min_value = value_2;
-        max_value = value_1;
-  }
   if (not_equal_scales) {
-      // надо добавить целую часть второго числа
-      s21_decimal fr_part = s21_get_fr_part(min_value);
-      if (s21_is_greater(fr_part, (s21_decimal){{5, 0, 0, 1 << 16}}) || (s21_is_equal(fr_part, (s21_decimal){{5, 0, 5, 1 << 16}}) && max_value.bits[0] % 2 == 1)) {
-          s21_print_decimal(max_value);
-          if (s21_get_sign(value_1) == 1) {
-              s21_add_with_equal_signs(&error, result, max_value, (s21_decimal){{1, 0, 0, 1 << 31}});
-          } else {
-              s21_add_with_equal_signs(&error, result, max_value, (s21_decimal) {{1, 0, 0, 0}});
-          }
-      } else {
-          result->bits[0] = max_value.bits[0];
-          result->bits[1] = max_value.bits[1];
-          result->bits[2] = max_value.bits[2];
-          result->bits[3] = max_value.bits[3];
-      }
+      s21_add_with_rounding(value_1, value_2, &error, result);
   } else {
       if (s21_get_sign(value_1) == s21_get_sign(value_2)) {
           s21_add_with_equal_signs(&error, result, value_1, value_2);
@@ -270,6 +247,7 @@ int s21_from_decimal_to_float(s21_decimal src, float *dst) {
 int s21_truncate(s21_decimal value, s21_decimal *result) {
   int res = !s21_is_valid_decimal(value);
   uint32_t sign = s21_get_sign(value);
+    s21_set_sign(&value, 0);
   if (res == 0) {
     s21_decimal_zero(result);
     uint32_t scale = s21_get_scale(value);
@@ -279,11 +257,13 @@ int s21_truncate(s21_decimal value, s21_decimal *result) {
       s21_decimal temp = value;
       temp.bits[3] = 0;
       s21_decimal integer_part;
+
       s21_div_by_10(scale, temp, &integer_part);
       temp.bits[0] = integer_part.bits[0];
       temp.bits[1] = integer_part.bits[1];
       temp.bits[2] = integer_part.bits[2];
       *result = temp;
+        s21_set_sign(&value, sign);
       s21_set_sign(result, sign);
     }
   }
@@ -338,10 +318,11 @@ int s21_round(s21_decimal value, s21_decimal *result) {
   return res;
 }
 
-int main() {
-    s21_decimal a = {{0xFFFFFFFE, 0xFFFFFFFF, 0xFFFFFFFF, 0}};
-    s21_decimal b = {{0, 0, 5, 1 << 16}};
-    s21_decimal result = {{0, 0, 0, 0}};
-    int res = s21_add(a, b, &result);
-    s21_print_decimal(result);
-}
+//int main() {
+//    s21_decimal a = {{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 1 << 31}};
+//    s21_decimal b = {{2, 0, 0, 0}};
+//    s21_decimal result = {{0, 0, 0, 0}};
+//    int res = s21_div(a, b, &result);
+//    printf("%d\n", res);
+//    s21_print_decimal(result);
+//}
