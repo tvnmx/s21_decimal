@@ -27,13 +27,13 @@ void s21_add_with_rounding(s21_decimal value_1, s21_decimal value_2, int *error,
     abs_result.bits[3] &= 0x7FFFFFFF;
     if (!(*error) && (s21_is_greater(fr_part_for_sum_fr_part, (s21_decimal){{5, 0, 0, 1 << 16}}) || (s21_is_equal(fr_part_for_sum_fr_part, (s21_decimal){{5, 0, 0, 1 << 16}}) && result->bits[0] % 2 == 1))) {
         if (s21_get_sign(*result)) {
-            s21_add_with_equal_signs(error, result, *result, (s21_decimal){{1, 0, 0, 1 << 31}});
+            s21_add_with_diff_signs(error, result, *result, (s21_decimal){{1, 0, 0, 0}});
         } else {
             s21_add_with_equal_signs(error, result, *result, (s21_decimal) {{1, 0, 0, 0}});
         }
     } else if (!(*error) && ((s21_is_less(fr_part_for_sum_fr_part, (s21_decimal){{5, 0, 0, 1 << 31 | 1 << 16}})) || (s21_is_equal(fr_part_for_sum_fr_part, (s21_decimal){{5, 0, 0, 1 << 31 | 1 << 16}}) && result->bits[0] % 2 == 1))) {
         if (s21_get_sign(*result)) {
-            s21_add_with_diff_signs(error, result, *result, (s21_decimal) {{1, 0, 0, 0}});
+            s21_add_with_equal_signs(error, result, *result, (s21_decimal) {{1, 0, 0, 1 << 31}});
         } else {
             s21_add_with_diff_signs(error, result, *result, (s21_decimal) {{1, 0, 0, 1 << 31}});
         }

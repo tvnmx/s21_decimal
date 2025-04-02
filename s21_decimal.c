@@ -19,20 +19,24 @@ int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
 }
 
 int s21_sub(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
-  s21_decimal zero = {{0, 0, 0, 0}};
-  *result = zero;
-  int error = 0;
-  uint32_t sign1 = s21_get_sign(value_1);
-  uint32_t sign2 = s21_get_sign(value_2);
-
-  s21_equalize_scales(&value_1, &value_2, &error);
-
-  if (sign1 == sign2) {
-    s21_sub_with_equal_signs(result, value_1, value_2);
-  } else {
-    s21_sub_with_diff_signs(&error, result, value_1, value_2);
-  }
-  return error;
+    s21_decimal zero = {{0, 0, 0, 0}};
+    *result = zero;
+    int error = 0;
+    uint32_t sign1 = s21_get_sign(value_1);
+    uint32_t sign2 = s21_get_sign(value_2);
+    int not_equal_scales = 0;
+    s21_equalize_scales(&value_1, &value_2, &not_equal_scales);
+    if (not_equal_scales) {
+        s21_set_sign(&value_2, !s21_get_sign(value_2));
+        s21_add_with_rounding(value_1, value_2, &error, result);
+    } else {
+        if (sign1 == sign2) {
+            s21_sub_with_equal_signs(result, value_1, value_2);
+        } else {
+            s21_sub_with_diff_signs(&error, result, value_1, value_2);
+        }
+    }
+    return error;
 }
 
 int s21_mul(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {

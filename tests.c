@@ -1032,10 +1032,45 @@ START_TEST(test_s21_add_banking_4) {
 }
 END_TEST
 
+START_TEST(test_s21_sub_banking_1) {
+    s21_decimal a = {{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0}};
+    s21_decimal b = {{6, 0, 0, 0x80000000 | 1<<16}};
+    s21_decimal result = {{0, 0, 0, 0}};
+    int res = s21_sub(a, b, &result);
+    ck_assert_int_eq(res, 1);
+}
+END_TEST
+
+START_TEST(test_s21_sub_banking_2) {
+    s21_decimal a = {{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0}};
+    s21_decimal b = {{2, 0, 0,  1<<16}};
+    s21_decimal result = {{0, 0, 0, 0}};
+    int res = s21_sub(a, b, &result);
+
+    ck_assert_int_eq(res, 0);
+    ck_assert_int_eq(result.bits[0], 0xFFFFFFFF);
+    ck_assert_int_eq(result.bits[1], 0xFFFFFFFF);
+    ck_assert_int_eq(result.bits[2], 0xFFFFFFFF);
+    ck_assert_int_eq(result.bits[3], 0);
+}
+END_TEST
+
+START_TEST(test_s21_sub_banking_3) {
+    s21_decimal a = {{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x80000000}};
+    s21_decimal b = {{5, 0, 0,  1<<16}};
+    s21_decimal result = {{0, 0, 0, 0}};
+    int res = s21_sub(a, b, &result);
+
+    ck_assert_int_eq(res, 2);
+}
+END_TEST
+
 Suite *s21_decimal_suite(void) {
   Suite *s = suite_create("s21_decimal");
   TCase *tc_core = tcase_create("Core");
-
+    tcase_add_test(tc_core, test_s21_sub_banking_1);
+    tcase_add_test(tc_core, test_s21_sub_banking_2);
+  tcase_add_test(tc_core, test_s21_sub_banking_3);
     tcase_add_test(tc_core, test_add_rounding_max);
     tcase_add_test(tc_core, test_add_rounding_min);
     tcase_add_test(tc_core, test_add_rounding_with_extra_one);
