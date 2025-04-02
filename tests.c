@@ -963,7 +963,7 @@ START_TEST(test_add_rounding_min) {
     s21_decimal b = {{5, 0, 0, 1 << 16 | 1 << 31}};
     s21_decimal result = {{0, 0, 0, 0}};
     int res = s21_add(a, b, &result);
-    ck_assert_int_eq(res, 1);
+    ck_assert_int_eq(res, 2);
 }
 
 START_TEST(test_add_rounding_with_extra_one) {
@@ -990,6 +990,7 @@ START_TEST(test_s21_add_banking_1) {
         ck_assert_int_eq(result.bits[3], 0);
 }
 END_TEST
+
 START_TEST(test_s21_add_banking_2) {
     s21_decimal a = {{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0}};
     s21_decimal b = {{2, 0, 0, 0x80000000 | 1<<16}};

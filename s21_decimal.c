@@ -15,10 +15,6 @@ int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
           s21_add_with_diff_signs(&error, result, value_1, value_2);
       }
   }
-  if (s21_get_sign(value_1) == 1 &&
-      s21_get_sign(value_1) == s21_get_sign(value_2)) {
-    s21_set_sign(result, 1);
-  }
   return error;
 }
 
@@ -128,7 +124,7 @@ int s21_is_greater(s21_decimal a, s21_decimal b) {
   uint32_t sign_b = s21_get_sign(tmp2);
   if (sign_a < sign_b) {
     result = 1;
-  } else if (sign_a == sign_b) {
+  } else if (!(sign_a || sign_b)) {
     for (int i = 2; i >= 0 && !flag; i--) {
       if (tmp1.bits[i] > tmp2.bits[i]) {
         result = 1;
@@ -138,6 +134,16 @@ int s21_is_greater(s21_decimal a, s21_decimal b) {
         flag = 1;
       }
     }
+  } else if (sign_b && sign_a) {
+      for (int i = 2; i >= 0 && !flag; i--) {
+          if (tmp1.bits[i] < tmp2.bits[i]) {
+              result = 1;
+              flag = 1;
+          } else if (tmp2.bits[i] < tmp1.bits[i]) {
+              result = 0;
+              flag = 1;
+          }
+      }
   }
   return result;
 }
@@ -263,10 +269,9 @@ int s21_truncate(s21_decimal value, s21_decimal *result) {
       temp.bits[1] = integer_part.bits[1];
       temp.bits[2] = integer_part.bits[2];
       *result = temp;
-        s21_set_sign(&value, sign);
-      s21_set_sign(result, sign);
     }
   }
+    s21_set_sign(result, sign);
   return res;
 }
 
@@ -319,10 +324,10 @@ int s21_round(s21_decimal value, s21_decimal *result) {
 }
 
 //int main() {
-//    s21_decimal a = {{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 1 << 31}};
-//    s21_decimal b = {{2, 0, 0, 0}};
+//    uint32_t sign_bit = (uint32_t)1 << 31;
+//    s21_decimal a = {{4, 0, 0, 0}};
+//    s21_decimal b = {{70, 0, 0, sign_bit}};
 //    s21_decimal result = {{0, 0, 0, 0}};
-//    int res = s21_div(a, b, &result);
-//    printf("%d\n", res);
+//    int res = s21_add(a, b, &result);
 //    s21_print_decimal(result);
 //}

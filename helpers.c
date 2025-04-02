@@ -18,17 +18,24 @@ void s21_add_with_rounding(s21_decimal value_1, s21_decimal value_2, int *error,
     } else {
         s21_add_with_diff_signs(error, &value_1, value_1, int_part_from_sum_fr_part);
     }
-
     if (s21_get_sign(value_1) == s21_get_sign(value_2)) {
         s21_add_with_equal_signs(error, result, int_part_1, int_part_2);
     } else {
         s21_add_with_diff_signs(error, result, int_part_1, int_part_2);
     }
+    s21_decimal abs_result = *result;
+    abs_result.bits[3] &= 0x7FFFFFFF;
     if (!(*error) && (s21_is_greater(fr_part_for_sum_fr_part, (s21_decimal){{5, 0, 0, 1 << 16}}) || (s21_is_equal(fr_part_for_sum_fr_part, (s21_decimal){{5, 0, 0, 1 << 16}}) && result->bits[0] % 2 == 1))) {
         if (s21_get_sign(*result)) {
             s21_add_with_equal_signs(error, result, *result, (s21_decimal){{1, 0, 0, 1 << 31}});
         } else {
             s21_add_with_equal_signs(error, result, *result, (s21_decimal) {{1, 0, 0, 0}});
+        }
+    } else if (!(*error) && ((s21_is_less(fr_part_for_sum_fr_part, (s21_decimal){{5, 0, 0, 1 << 31 | 1 << 16}})) || (s21_is_equal(fr_part_for_sum_fr_part, (s21_decimal){{5, 0, 0, 1 << 31 | 1 << 16}}) && result->bits[0] % 2 == 1))) {
+        if (s21_get_sign(*result)) {
+            s21_add_with_diff_signs(error, result, *result, (s21_decimal) {{1, 0, 0, 0}});
+        } else {
+            s21_add_with_diff_signs(error, result, *result, (s21_decimal) {{1, 0, 0, 1 << 31}});
         }
     }
 }
@@ -36,12 +43,14 @@ void s21_add_with_rounding(s21_decimal value_1, s21_decimal value_2, int *error,
 s21_decimal s21_get_fr_part(s21_decimal value) {
     s21_decimal result = {{0, 0, 0, 0}};
     uint32_t scale = s21_get_scale(value);
+    uint32_t sign = s21_get_sign(value);
     if (scale) {
         s21_decimal int_part = {{0, 0, 0, 0}};
         s21_truncate(value, &int_part);
         s21_sub(value, int_part, &result);
     }
     s21_set_scale(&result, scale);
+    s21_set_sign(&result, sign);
     return result;
 }
 
@@ -68,17 +77,17 @@ void s21_add_with_diff_signs(int *error, s21_decimal *result,
                              s21_decimal value_1, s21_decimal value_2) {
   s21_decimal abs_value_1 = value_1;
   s21_decimal abs_value_2 = value_2;
-
   abs_value_1.bits[3] &= 0x7FFFFFFF;
   abs_value_2.bits[3] &= 0x7FFFFFFF;
-
+  s21_decimal max_value = s21_is_greater_or_equal(abs_value_1, abs_value_2) ? value_1 : value_2;
   if (s21_is_greater_or_equal(abs_value_1, abs_value_2)) {
     value_2.bits[3] ^= 0x80000000;
     *error = s21_sub(value_1, value_2, result);
+      s21_set_sign(result, s21_get_sign(max_value));
   } else {
     value_1.bits[3] ^= 0x80000000;
     *error = s21_sub(value_2, value_1, result);
-    result->bits[3] ^= 0x80000000;
+      s21_set_sign(result, s21_get_sign(max_value));
   }
     uint32_t max_scale = s21_get_scale(value_1) > s21_get_scale(value_2) ? s21_get_scale(value_1) : s21_get_scale(value_2);
     s21_set_scale(result, max_scale);
@@ -86,8 +95,12 @@ void s21_add_with_diff_signs(int *error, s21_decimal *result,
 
 void s21_sub_with_equal_signs(s21_decimal *result, s21_decimal value_1,
                               s21_decimal value_2) {
+    s21_decimal abs_value_1 = value_1;
+    s21_decimal abs_value_2 = value_2;
+    abs_value_1.bits[3] &= 0x7FFFFFFF;
+    abs_value_2.bits[3] &= 0x7FFFFFFF;
   int borrow = 0;
-  if (s21_is_greater_or_equal(value_1, value_2)) {
+  if (s21_is_greater_or_equal(abs_value_1, abs_value_2)) {
     for (int i = 0; i < 3; i++) {
       int64_t diff = (int64_t)value_1.bits[i] - value_2.bits[i] - borrow;
       if (diff < 0) {
@@ -165,8 +178,6 @@ int s21_div_support(s21_decimal *remainder, s21_decimal divisible,
   return 0;
 }
 
-
-// отрицательные числа ???
 void div_bank_round(s21_decimal *quotient, s21_decimal *fractional, int *fractional_scale, s21_decimal *divisor, s21_decimal remainder) {
     s21_decimal zero = {{0, 0, 0, 0}};
     s21_decimal one = {{1, 0, 0, 0}};
